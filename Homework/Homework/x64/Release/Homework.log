@@ -1,0 +1,8 @@
+﻿  main.cpp
+D:\Users\王琳蕊\source\repos\Homework\Homework\main.cpp(149,15): warning C4244: “参数”: 从“time_t”转换到“unsigned int”，可能丢失数据
+D:\Users\王琳蕊\source\repos\Homework\Homework\main.cpp(612,25): error C2062: 意外的类型“int” 
+D:\Users\王琳蕊\source\repos\Homework\Homework\main.cpp(612,35): warning C4552: ”!=“: 未使用表达式结果
+D:\Users\王琳蕊\source\repos\Homework\Homework\main.cpp(612,55): error C2065: “i”: 未声明的标识符
+D:\Users\王琳蕊\source\repos\Homework\Homework\main.cpp(612,58): error C2059: 语法错误:“)”
+D:\Users\王琳蕊\source\repos\Homework\Homework\main.cpp(613,9): error C2146: 语法错误: 缺少“;”(在标识符“cout”的前面)
+D:\Users\王琳蕊\source\repos\Homework\Homework\main.cpp(613,16): error C2065: “i”: 未声明的标识符
