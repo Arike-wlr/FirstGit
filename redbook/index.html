@@ -212,10 +212,13 @@ svg{display:block}
 .pc-top{display:flex;gap:11px;align-items:center}
 .pc-name{font-weight:650;font-size:15px;letter-spacing:-.2px;line-height:1.3}
 .pc-phone{font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
-.pc-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin:14px 0 12px;padding:12px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
-.pc-stat{text-align:center}
-.pc-stat b{display:block;font-size:16px;font-weight:650;letter-spacing:-.3px;font-variant-numeric:tabular-nums}
-.pc-stat span{font-size:11px;color:var(--muted)}
+.pc-stats{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin:14px 0 12px;padding:10px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.pc-stat{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:8px 0;border-radius:10px;transition:.16s}
+.pc-stat:hover{background:#f6f7fb}
+.pc-stat:active{background:#eef0f6}
+.pc-stat:hover span{color:var(--brand)}
+.pc-stat b{font-size:15px;font-weight:650;letter-spacing:-.3px;font-variant-numeric:tabular-nums}
+.pc-stat span{font-size:12px;color:var(--muted)}
 .pc-actions{display:flex;gap:8px}
 .pc-actions .btn-ghost{flex:1;justify-content:center;padding:7px;font-size:12.5px;background:#f7f8fa}
 
@@ -337,8 +340,18 @@ svg{display:block}
 .cmt-name{font-size:13px;font-weight:600}
 .cmt-time{font-size:10.5px;color:#b6bac4;font-variant-numeric:tabular-nums}
 .cmt-text{font-size:13.8px;line-height:1.7;color:#2c2e36;margin-top:3px;word-break:break-word;white-space:pre-wrap}
-.cmt-reply{margin-top:8px;padding:8px 11px;border-radius:11px;background:var(--soft);font-size:12.8px;line-height:1.65;color:#8a3a2a;border-left:2px solid #ffc1cb}
-.cmt-reply b{font-weight:650;color:#e8324a}
+.cmt-reply{margin-top:8px;padding:7px 11px;border-radius:11px;background:#f7f8fb;border-left:2px solid #e2e6ef;
+  font-size:12.8px;line-height:1.65;color:#4a4f5a;display:flex;gap:8px;align-items:flex-start}
+.cmt-reply.is-author{background:var(--soft);border-left-color:#ffc1cb;color:#8a3a2a}
+.cmt-reply .cr-body{flex:1;min-width:0;word-break:break-word}
+.cmt-reply b{font-weight:650;color:#5a6270}
+.cmt-reply.is-author b{color:#e8324a}
+.re-to{color:#9aa2b1;font-weight:400}
+.cr-acts{display:flex;gap:2px;flex:none;opacity:.5;transition:.15s}
+.cmt-reply:hover .cr-acts{opacity:1}
+.cr-acts button{font-size:11px;color:var(--muted);padding:1px 6px;border-radius:6px}
+.cr-acts button:hover{background:#fff;color:var(--ink2)}
+.pill-host{background:#eef4ff;color:#4a6cf7}
 .cmt-acts{display:flex;gap:2px;margin-top:4px}
 .cmt-acts button{font-size:11.5px;color:var(--muted);padding:3px 7px;border-radius:7px;transition:.15s}
 .cmt-acts button:hover{background:#f4f5f9;color:var(--ink2)}
@@ -365,6 +378,15 @@ svg{display:block}
 .modal-card h4{margin:0 0 8px;font-size:17px;font-weight:650;letter-spacing:-.3px}
 .modal-card p{margin:0 0 20px;font-size:13.5px;color:var(--muted);line-height:1.7}
 .modal-acts{display:flex;gap:9px;justify-content:flex-end}
+.people-card{max-width:430px}
+.ppl-list{max-height:min(52vh,360px);overflow:auto;margin:2px 0 18px}
+.ppl-item{display:flex;align-items:center;gap:10px;padding:9px 2px;border-bottom:1px solid #f4f5f9}
+.ppl-item:last-child{border-bottom:0}
+.ppl-who{flex:1;min-width:0}
+.ppl-name{font-size:13.5px;font-weight:600;line-height:1.3}
+.ppl-sub{font-size:11px;color:var(--muted)}
+.ppl-empty{padding:22px 0;text-align:center;font-size:12.5px;color:#b6bac4}
+.rec-btn.on{background:#eef4ff;color:#4a6cf7}
 .btn-danger{display:inline-flex;align-items:center;padding:9px 18px;border-radius:11px;font-size:13.5px;font-weight:600;color:#fff;background:linear-gradient(135deg,#ff5a4a,#e8382d);box-shadow:0 10px 20px -12px rgba(232,56,45,.8);transition:.18s}
 .btn-danger:hover{transform:translateY(-1px)}
 
@@ -468,7 +490,7 @@ svg{display:block}
           </div>
         </div>
         <h1>欢迎您来到<br><em>单机版小红书</em>。</h1>
-        <p class="art-desc">没有框架，也没有 ORM。登录、发帖、评论、关注全交给一个 C++ 写的后端，数据落在一个 SQLite 文件里——四个 txt 只在第一次启动时喂一口。</p>
+        <p class="art-desc">我大一上学期的 C++ 程序设计基础课程的大作业，用 C++ 实现一个单机版的小红书。如今给它加了个前端，看看当年都干了些什么。</p>
         <div class="art-menu">
           <span><b>1</b>发布内容</span>
           <span><b>2</b>删除自己的</span>
@@ -511,7 +533,6 @@ svg{display:block}
       </div>
       <nav class="nav" id="nav"></nav>
       <div class="profile-card" id="profileCard"></div>
-      <div class="follow-block" id="followBlock"></div>
       <div class="rail-foot">
         <button class="term-btn" data-act="terminal">
           <svg class="i" viewBox="0 0 24 24"><path d="m4 17 6-6-6-6M12 19h8"/></svg>
@@ -610,6 +631,18 @@ svg{display:block}
       <div class="tm-foot">
         <span class="tm-prompt" id="termPrompt">&gt;</span>
         <input class="tm-input" id="termInput" autocomplete="off" spellcheck="false" placeholder="输入后回车">
+      </div>
+    </div>
+  </div>
+
+  <!-- 关注 / 粉丝名单 -->
+  <div class="modal" id="peopleModal">
+    <div class="backdrop on" data-act="closePeople" style="z-index:-1"></div>
+    <div class="modal-card people-card">
+      <h4 id="pplTitle">我的关注</h4>
+      <div class="ppl-list" id="pplList"></div>
+      <div class="modal-acts">
+        <button class="btn-line" data-act="closePeople">关闭</button>
       </div>
     </div>
   </div>
@@ -935,7 +968,7 @@ function renderLogin(){
       </label>
       <div class="err" id="loginErr"></div>
       <button class="btn-primary" data-act="loginNext">继续</button>
-      <div class="divider"><span>点一下直接进（共 ${S.users.length} 位）</span></div>
+      <div class="divider"><span>已有账号，点一下直接进（共 ${S.users.length} 位）</span></div>
       <div class="chips">
         ${S.users.map(u => `
           <button class="chip" data-act="quickLogin" data-phone="${u.phone}">
@@ -1146,20 +1179,18 @@ function logout(){
    渲染
    ========================================================= */
 const TAB_META = {
-  square: { title:'广场',   desc:'所有人在这个 txt 里的碎碎念' },
-  follow: { title:'关注',   desc:'你关注的人，最近说了什么' },
+  square: { title:'广场',   desc:'所有人在这里的碎碎念' },
   mine:   { title:'我的发布', desc:'你在这个广场留下的痕迹' }
 };
 
 function renderAll(){
-  renderNav(); renderProfile(); renderFollowBlock(); renderFeed(); renderRight(); renderComposerAvatar(); renderTabs();
+  renderNav(); renderProfile(); renderFeed(); renderRight(); renderComposerAvatar(); renderTabs();
 }
 
 function renderNav(){
   const m = me(); if (!m) return;
   const items = [
     { k:'square', label:'广场',     icon:ICON.square, count:S.posts.length },
-    { k:'follow', label:'关注',     icon:ICON.follow, count:S.follows.filter(f=>f.userphone===m.phone).length },
     { k:'mine',   label:'我的发布', icon:ICON.mine,   count:postsOf(m.phone).length }
   ];
   el('#nav').innerHTML = items.map(it => `
@@ -1168,9 +1199,35 @@ function renderNav(){
     </button>`).join('');
 }
 function renderTabs(){
-  el('#mobileTabs').innerHTML = ['square','follow','mine'].map(k => `
+  el('#mobileTabs').innerHTML = ['square','mine'].map(k => `
     <button class="mt-btn ${tab===k?'active':''}" data-act="tab" data-tab="${k}">${TAB_META[k].title}</button>`).join('');
 }
+let peopleKind = 'following';
+function openPeople(kind){
+  const m = me(); if (!m) return;
+  if (kind) peopleKind = kind;
+  const rows = peopleKind === 'following'
+    ? S.follows.filter(f => f.userphone === m.phone)
+    : S.follows.filter(f => f.fophone === m.phone);
+  el('#pplTitle').textContent = (peopleKind === 'following' ? '我关注的' : '关注我的') + ' · ' + rows.length;
+  el('#pplList').innerHTML = rows.length ? rows.map(f => {
+    const phone = peopleKind === 'following' ? f.fophone : f.userphone;
+    const u = userByPhone(phone);
+    const name = u ? u.name : (f.foname || '');
+    const on = isFollowing(phone);
+    return `
+      <div class="ppl-item">
+        ${avatarHTML(name, phone, 'sm')}
+        <div class="ppl-who" data-act="viewUser" data-phone="${phone}" style="cursor:pointer">
+          <div class="ppl-name">${esc(name)}</div>
+          <div class="ppl-sub">${maskPhone(phone)} · ${postsOf(phone).length} 条动态</div>
+        </div>
+        <button class="rec-btn ${on ? 'on' : ''}" data-act="toggleFollow" data-phone="${phone}">${on ? '已关注' : '关注'}</button>
+      </div>`;
+  }).join('') : `<div class="ppl-empty">${peopleKind === 'following' ? '还没有关注任何人' : '还没有人关注你'}</div>`;
+  el('#peopleModal').classList.add('on');
+}
+
 function renderProfile(){
   const m = me(); if (!m) return;
   el('#profileCard').innerHTML = `
@@ -1182,9 +1239,12 @@ function renderProfile(){
       </div>
     </div>
     <div class="pc-stats">
-      <div class="pc-stat"><b>${postsOf(m.phone).length}</b><span>发布</span></div>
-      <div class="pc-stat"><b>${S.follows.filter(f=>f.userphone===m.phone).length}</b><span>关注</span></div>
-      <div class="pc-stat"><b>${followersOf(m.phone).length}</b><span>粉丝</span></div>
+      <button class="pc-stat" data-act="people" data-kind="following">
+        <b>${S.follows.filter(f=>f.userphone===m.phone).length}</b><span>关注</span>
+      </button>
+      <button class="pc-stat" data-act="people" data-kind="followers">
+        <b>${followersOf(m.phone).length}</b><span>粉丝</span>
+      </button>
     </div>
     <div class="pc-actions">
       <button class="btn-ghost" data-act="logout">退出登录</button>
@@ -1194,21 +1254,6 @@ function renderProfile(){
     ${avatarHTML(m.name, m.phone, 'sm')}
     <span class="mu-name">${esc(m.name)}</span>
     <button class="btn-ghost" data-act="logout">退出</button>`;
-}
-function renderFollowBlock(){
-  const m = me(); if (!m) return;
-  const list = S.follows.filter(f => f.userphone === m.phone);
-  el('#followBlock').innerHTML = `
-    <div class="sec-title">我的关注 <span>${list.length}</span></div>
-    ${list.length ? list.map(f => `
-      <button class="follow-item" data-act="viewUser" data-phone="${f.fophone}">
-        ${avatarHTML(f.foname, f.fophone, 'sm')}
-        <span style="min-width:0">
-          <span class="fi-name">${esc(f.foname)}</span><br>
-          <span class="fi-phone">${maskPhone(f.fophone)}</span>
-        </span>
-      </button>`).join('')
-      : `<div style="font-size:12px;color:#b6bac4;padding:4px 8px 8px;line-height:1.7">还没关注任何人<br>去广场看看别人在说什么</div>`}`;
 }
 function renderComposerAvatar(){
   const m = me(); if (!m) return;
@@ -1222,10 +1267,7 @@ function renderComposerAvatar(){
 function currentPosts(){
   const m = me();
   let arr = S.posts.slice();
-  if (tab === 'follow'){
-    const following = S.follows.filter(f => f.userphone === m.phone).map(f => f.fophone);
-    arr = arr.filter(p => following.includes(p.phone));
-  } else if (tab === 'mine'){
+  if (tab === 'mine'){
     arr = arr.filter(p => p.phone === m.phone);
   }
   if (query){
@@ -1279,14 +1321,14 @@ function renderFeed(){
   const meta = TAB_META[tab];
   el('#tbTitle').textContent = query ? '搜索结果' : meta.title;
   el('#tbSub').textContent = query ? `“${query}” · 找到 ${arr.length} 条` : `${meta.desc} · ${arr.length} 条`;
-  el('#composer').style.display = (tab === 'follow') ? 'none' : '';
+  el('#composer').style.display = '';
 
   if (!arr.length){
     el('#feed').innerHTML = `
       <div class="card empty">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M21 11.5a8 8 0 0 1-8.5 8L7 21l.9-4.2A8 8 0 1 1 21 11.5z"/></svg>
-        <b>${query ? '没搜到相关内容' : (tab === 'follow' ? '关注列表还是空的' : '这里还没有内容')}</b>
-        ${query ? '换个关键词试试' : (tab === 'follow' ? '去广场逛逛，关注几个人吧' : '在上面的输入框里写第一条吧')}
+        <b>${query ? '没搜到相关内容' : '这里还没有内容'}</b>
+        ${query ? '换个关键词试试' : '在上面的输入框里写第一条吧'}
       </div>`;
     return;
   }
@@ -1314,7 +1356,7 @@ function renderRight(){
     </div>
     <div class="card about">
       <h3>关于这个项目</h3>
-      <p>2024 年 C++ 课程大作业：没有框架、没有数据库，四张 txt 就是全部后端。这层 Web 版把它搬进了 SQLite，四张表 <code>users / posts / comments / follows</code>；txt 只在首次启动时导入一次，之后只读。现在 <code>posts</code> 表共 ${BACKEND.files ? BACKEND.files.contents : 13} 行，其中 ${(BACKEND.files ? BACKEND.files.contents : 13) - S.posts.length} 行是 <code>deleted=1</code>（含原程序留下的 <code>##</code> 墓碑），查询时自动过滤。</p>
+      <p>左栏底部那个控制台，是照原程序菜单复刻的，想回味可以进去敲两下。</p>
       <div class="stat-grid">
         <div class="stat-cell"><b>${S.users.length}</b><span>注册用户</span></div>
         <div class="stat-cell"><b>${S.posts.length}</b><span>动态</span></div>
@@ -1355,18 +1397,31 @@ function commentHTML(c){
   const mine = c.phone === m.phone;
   const post = S.posts.find(x => x.id === c.postId);
   const authorName = post ? post.name : '';
+  const who = (name, to) => {
+    const base = name === authorName ? '博主回复' : esc(name) + ' 回复';
+    return to ? base + ' <span class="re-to">@' + esc(to) + '</span>' : base;
+  };
   return `
     <div class="cmt">
       ${avatarHTML(c.name, c.phone, 'sm')}
       <div class="cmt-body">
         <div class="cmt-top">
           <span class="cmt-name">${esc(c.name)}</span>
+          ${c.name === authorName ? '<span class="pill pill-host">博主</span>' : ''}
           ${mine ? '<span class="pill" style="padding:1px 6px;font-size:10px">我</span>' : ''}
           <span class="cmt-time">${relTime(c.time) || fmtTime(c.time).slice(5,16)}</span>
         </div>
         <div class="cmt-text">${esc(c.text)}</div>
         ${rs.map(r => `
-          <div class="cmt-reply"><b>${r.name === authorName ? '博主回复' : esc(r.name) + ' 回复'}：</b>${esc(r.text)}</div>`).join('')}
+          <div class="cmt-reply ${r.name === authorName ? 'is-author' : ''}">
+            <div class="cr-body">
+              <b>${who(r.name, r.to)}：</b>${esc(r.text)}
+            </div>
+            <div class="cr-acts">
+              <button data-act="replyTo" data-id="${c.id}" data-name="${esc(r.name)}" data-to="${esc(r.name)}">回复</button>
+              ${r.phone && r.phone === m.phone && r.id ? `<button data-act="delCmt" data-id="${r.id}">删除</button>` : ''}
+            </div>
+          </div>`).join('')}
         <div class="cmt-acts">
           <button data-act="replyTo" data-id="${c.id}" data-name="${esc(c.name)}">回复</button>
           ${mine ? `<button data-act="delCmt" data-id="${c.id}">删除</button>` : ''}
@@ -1374,6 +1429,7 @@ function commentHTML(c){
       </div>
     </div>`;
 }
+
 function renderDrawer(){
   if (!drawerPostId) return;
   const p = S.posts.find(x => x.id === drawerPostId);
@@ -1408,16 +1464,17 @@ async function sendComment(){
     try{
       const r = await call('comment/create', {
         postId: drawerPostId, phone: m.phone, text,
-        parentId: replyTarget ? replyTarget.id : ''
+        parentId: replyTarget ? replyTarget.parentId : '',
+        to: replyTarget ? replyTarget.to : ''
       });
       if (!r.ok) return toast(r.error || '评论失败', 'err');
       await pull();
     }catch(e){ return toast('连不上 C++ 后端', 'err'); }
   } else if (replyTarget){
-    const target = S.comments.find(x => x.id === replyTarget.id);
+    const target = S.comments.find(x => x.id === replyTarget.parentId);
     if (target){
       target.replies = target.replies || [];
-      target.replies.push({ name: m.name, text, time: now });
+      target.replies.push({ name: m.name, text, time: now, to: replyTarget.to });
     }
   } else {
     S.comments.push({
@@ -1429,6 +1486,7 @@ async function sendComment(){
   ta.value = ''; ta.rows = 1;
   replyTarget = null;
   el('#replyTo').classList.remove('on');
+  ta.placeholder = '说点什么…';
   renderDrawer(); renderFeed(); renderNav();
   toast('评论成功', 'ok');
   const body = el('#drawerBody');
@@ -1473,10 +1531,11 @@ document.addEventListener('click', async e => {
     case 'replyTo': {
       const c = S.comments.find(x => x.id === t.dataset.id);
       if (!c) break;
-      replyTarget = { id: c.id, name: c.name };
+      replyTarget = { parentId: c.id, name: t.dataset.name || c.name, to: t.dataset.to || '' };
       const rt = el('#replyTo');
       rt.classList.add('on');
-      el('#replyName').textContent = c.name;
+      el('#replyName').textContent = replyTarget.to || replyTarget.name;
+      el('#cmtInput').placeholder = '回复 ' + el('#replyName').textContent + '…';
       el('#cmtInput').focus();
       break;
     }
@@ -1538,6 +1597,7 @@ document.addEventListener('click', async e => {
       const u = userByPhone(phone);
       toast(on ? '已取消关注' : '已关注 ' + (u ? u.name : ''), on ? '' : 'ok');
       renderAll();
+      if (el('#peopleModal').classList.contains('on')) openPeople();
       break;
     }
     case 'viewUser': {
@@ -1546,6 +1606,7 @@ document.addEventListener('click', async e => {
       if (!u) break;
       query = u.name; el('#search').value = u.name;
       tab = 'square';
+      el('#peopleModal').classList.remove('on');
       renderAll();
       break;
     }
@@ -1558,6 +1619,8 @@ document.addEventListener('click', async e => {
     }
     case 'confirmNo': closeConfirm(); break;
     case 'terminal': openTerminal(); break;
+    case 'people': openPeople(t.dataset.kind); break;
+    case 'closePeople': el('#peopleModal').classList.remove('on'); break;
     case 'closeTerm': el('#termModal').classList.remove('on'); break;
     case 'reset': {
       if (API){
@@ -1613,7 +1676,6 @@ async function publish(){
   }
   ta.value = ''; ta.style.height = 'auto';
   updateCount();
-  if (tab === 'follow') tab = 'mine';
   renderAll();
   toast('发布成功', 'ok');
 }

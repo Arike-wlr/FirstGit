@@ -252,6 +252,14 @@ static void ensureSchema() {
         "  PRIMARY KEY(user_phone, follow_phone));"
         "CREATE INDEX IF NOT EXISTS idx_comments_post ON comments(post_id);"
         "CREATE INDEX IF NOT EXISTS idx_posts_time ON posts(time);");
+
+    // 老库迁移：回复某条回复时，记下被回复人的名字
+    bool hasReplyTo = false;
+    {
+        Stmt st("PRAGMA table_info(comments)");
+        while (st.row()) if (st.txt(1) == "reply_to") hasReplyTo = true;
+    }
+    if (!hasReplyTo) dbExec("ALTER TABLE comments ADD COLUMN reply_to TEXT;");
 }
 
 // 把 "评论正文博主回复：回复1博主回复：回复2" 拆开
@@ -393,6 +401,13 @@ static void importFromTxt() {
          << nDeleted << " 条墓碑）/ " << nComments << " 评论 / " << nFollows << " 关注\n";
 }
 
+// comments.txt 里那一列存的是「帖子作者」，不是评论者；
+// 用昵称反查 users 表，把 phone 修正成评论者本人（幂等，每次启动跑一遍）
+static void fixCommentPhones() {
+    dbExec("UPDATE comments SET phone = (SELECT u.phone FROM users u WHERE u.name = comments.name) "
+           "WHERE EXISTS (SELECT 1 FROM users u WHERE u.name = comments.name);");
+}
+
 // ---------------- 校验 ----------------
 static bool validPhone(const string& p) {
     if (p.size() != 11) return false;
@@ -463,14 +478,15 @@ static string jsonState() {
             o << "{\"id\":\"c" << cid << "\",\"postId\":\"p" << st.num(1) << "\",\"phone\":\""
               << jesc(st.txt(2)) << "\",\"name\":\"" << jesc(st.txt(3)) << "\",\"text\":\""
               << jesc(st.txt(4)) << "\",\"time\":\"" << jesc(st.txt(5)) << "\",\"replies\":[";
-            Stmt rq("SELECT name,text,time FROM comments WHERE parent_id=? AND deleted=0 ORDER BY time,id");
+            Stmt rq("SELECT id,name,text,time,reply_to,phone FROM comments WHERE parent_id=? AND deleted=0 ORDER BY time,id");
             rq.bind(1, cid);
             bool f2 = true;
             while (rq.row()) {
                 if (!f2) o << ",";
                 f2 = false;
-                o << "{\"name\":\"" << jesc(rq.txt(0)) << "\",\"text\":\"" << jesc(rq.txt(1))
-                  << "\",\"time\":\"" << jesc(rq.txt(2)) << "\"}";
+                o << "{\"id\":\"c" << rq.num(0) << "\",\"name\":\"" << jesc(rq.txt(1))
+                  << "\",\"text\":\"" << jesc(rq.txt(2)) << "\",\"time\":\"" << jesc(rq.txt(3))
+                  << "\",\"to\":\"" << jesc(rq.txt(4)) << "\",\"phone\":\"" << jesc(rq.txt(5)) << "\"}";
             }
             o << "]}";
         }
@@ -586,9 +602,11 @@ static string apiCreateComment(const string& body) {
         q.bind(1, parent); q.bind(2, pid);
         if (!q.row() || q.num(0) == 0) return failJson("要回复的评论不存在");
     }
-    Stmt st("INSERT INTO comments(post_id,phone,name,text,time,parent_id) VALUES(?,?,?,?,?,?)");
+    string to = trim(jget(body, "to"));      // 回复某条回复时，被回复人的名字
+    Stmt st("INSERT INTO comments(post_id,phone,name,text,time,parent_id,reply_to) VALUES(?,?,?,?,?,?,?)");
     st.bind(1, pid); st.bind(2, phone); st.bind(3, name); st.bind(4, text); st.bind(5, nowIso());
     if (parent) st.bind(6, parent); else sqlite3_bind_null(st.s, 6);
+    if (!to.empty()) st.bind(7, to); else sqlite3_bind_null(st.s, 7);
     if (!st.done()) return failJson("评论失败");
     return okJson();
 }
@@ -776,6 +794,7 @@ int main(int argc, char** argv) {
     sqlite3_busy_timeout(g_db, 3000);
     ensureSchema();
     importFromTxt();
+    fixCommentPhones();
 
     WSADATA wsa;
     if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
