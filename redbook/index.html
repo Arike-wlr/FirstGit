@@ -799,7 +799,7 @@ function seedState(){
 /* ---------- 状态 ---------- */
 // 通过 http(s) 打开时说明有 C++ 后端在跑；直接双击文件则是纯前端模式
 const API = /^https?:$/.test(location.protocol) ? 'api' : null;
-const BACKEND = { mode: API ? 'cpp' : 'local', files: null, error: '' };
+const BACKEND = { mode: API ? 'cpp' : 'local', files: null, db: null, error: '' };
 
 let S = loadState();
 let tab = 'square';
@@ -840,6 +840,7 @@ async function pull(){
   const d = await call('state');
   S = { users: d.users, posts: d.posts, comments: d.comments, follows: d.follows, currentPhone: keep };
   BACKEND.files = d.files || null;
+  if (d.db) BACKEND.db = d.db;
   normalizeReplies();
 }
 // comments.txt 里没有作者字段，「博主回复：」是拼在正文里的，拿回来要拆开
@@ -956,21 +957,21 @@ function renderLogin(){
     box.innerHTML = `
       <div class="step-tag">Step 1 / 2 · 验证手机号</div>
       <h2>欢迎回来</h2>
-      <p class="sub">输入 11 位手机号。没注册过的话，会自动带你走一遍注册流程。</p>
+      <p class="sub">直接点下面的账号就能进；也可以手动输手机号，没注册过会带你走一遍注册流程。</p>
       <label class="field">
         ${ICON.phone}
         <input id="inPhone" inputmode="numeric" maxlength="11" placeholder="请输入手机号" value="${esc(loginState.phone)}" autocomplete="off">
       </label>
       <div class="err" id="loginErr"></div>
       <button class="btn-primary" data-act="loginNext">继续</button>
-      <div class="divider"><span>或直接用已注册的账号（共 ${S.users.length} 位）</span></div>
+      <div class="divider"><span>点一下直接进（共 ${S.users.length} 位）</span></div>
       <div class="chips">
         ${S.users.map(u => `
-          <button class="chip" data-act="pickAcct" data-phone="${u.phone}">
+          <button class="chip" data-act="quickLogin" data-phone="${u.phone}">
             ${avatarHTML(u.name, u.phone, 'sm')}
             <span>
               <span class="ch-name">${esc(u.name)}</span><br>
-              <span class="ch-phone">${maskPhone(u.phone)} · 密码 ${esc(u.pwd)}</span>
+              <span class="ch-phone">${maskPhone(u.phone)}</span>
             </span>
             <span class="ch-go">›</span>
           </button>`).join('')}
@@ -1076,6 +1077,20 @@ function loginNext(){
   loginState.tries = 0;
   loginState.step = u ? 'pwd' : 'reg';
   renderLogin();
+}
+async function quickLogin(phone){
+  const u = userByPhone(phone);
+  if (!u) return toast('账号不存在', 'err');
+  loginState.phone = phone;
+  if (API){
+    try{
+      const r = await call('login', { phone, pwd: u.pwd });
+      if (!r.ok) return toast(r.error || '登录失败', 'err');
+      await pull();
+    }catch(e){ return toast('连不上 C++ 后端', 'err'); }
+  }
+  loginState.tries = 0;
+  enterApp(phone);
 }
 function wrongPwd(msg){
   loginState.tries++;
@@ -1333,7 +1348,7 @@ function renderRight(){
     </div>
     <div class="card about">
       <h3>关于这个项目</h3>
-      <p>2024 年 C++ 课程大作业。没有框架、没有数据库，四张 txt 就是全部后端，链表存动态、链表存评论、链表存关注。原始 <code>contents.txt</code> 的 ${BACKEND.files ? BACKEND.files.contents : 19} 条记录里，有 ${(BACKEND.files ? BACKEND.files.contents : 19) - S.posts.length} 条被原程序打成了 <code>##</code> 墓碑，这里按原样过滤掉。</p>
+      <p>2024 年 C++ 课程大作业：没有框架、没有数据库，四张 txt 就是全部后端，链表存动态、评论、关注。这层 Web 版把它搬进了 SQLite，四张表 <code>users / posts / comments / follows</code>；txt 只在首次启动时导入一次，之后只读。原始 <code>contents.txt</code> 的 ${BACKEND.files ? BACKEND.files.contents : 19} 条记录里，有 ${(BACKEND.files ? BACKEND.files.contents : 19) - S.posts.length} 条被原程序打成了 <code>##</code> 墓碑，这里存成 <code>deleted=1</code>。</p>
       <div class="stat-grid">
         <div class="stat-cell"><b>${S.users.length}</b><span>注册用户</span></div>
         <div class="stat-cell"><b>${S.posts.length}</b><span>动态</span></div>
@@ -1341,12 +1356,12 @@ function renderRight(){
         <div class="stat-cell"><b>${S.follows.length}</b><span>关注关系</span></div>
       </div>
       <button class="btn-line" data-act="terminal">看看原来的控制台</button>
-      <button class="reset-btn" data-act="reset">${API ? '重新读取四个 txt' : '重置为原始数据'}</button>
+      <button class="reset-btn" data-act="reset">${API ? '重新从数据库加载' : '重置为原始数据'}</button>
     </div>
     <div class="foot-note">
       ${API
-        ? '单机版小红书 · 数据来自 C++ 后端<br>' + (BACKEND.files
-            ? `users.txt ${BACKEND.files.users} · contents.txt ${BACKEND.files.contents} · comments.txt ${BACKEND.files.comments}`
+        ? '单机版小红书 · 数据来自 C++ 后端<br>' + (BACKEND.db
+            ? `${BACKEND.db.engine} · ${BACKEND.db.path}`
             : '连接中…')
         : '单机版小红书 · 纯前端模式<br>数据存在浏览器 localStorage'}
     </div>`;
@@ -1471,6 +1486,10 @@ document.addEventListener('click', async e => {
     case 'pickAcct': {
       loginState.phone = t.dataset.phone; loginState.step = 'pwd'; renderLogin(); break;
     }
+    case 'quickLogin': {
+      await quickLogin(t.dataset.phone);
+      break;
+    }
     case 'regNext': regNext(); break;
     case 'regBack': loginState.step = 'reg'; renderLogin(); break;
     case 'capRefresh':
@@ -1505,7 +1524,7 @@ document.addEventListener('click', async e => {
         desc:'评论也会一起消失。后端会和原程序一样，把手机号写成 ## 当墓碑。',
         async cb(){
           if (API){
-            const r = await call('post/delete', { id: p.id });
+            const r = await call('post/delete', { id: p.id, phone: me().phone });
             if (!r.ok) return toast(r.error || '删除失败', 'err');
             await pull();
           } else {
@@ -1523,7 +1542,7 @@ document.addEventListener('click', async e => {
       const c = S.comments.find(x => x.id === t.dataset.id);
       if (!c) break;
       if (API){
-        const r = await call('comment/delete', { id: c.id });
+        const r = await call('comment/delete', { id: c.id, phone: me().phone });
         if (!r.ok) return toast(r.error || '删除失败', 'err');
         await pull();
       } else {
@@ -1578,14 +1597,14 @@ document.addEventListener('click', async e => {
     case 'reset': {
       if (API){
         confirmDialog({
-          title:'重新读取四个 txt？',
-          desc:'后端每次请求都会重新读文件，这里只是把当前磁盘上的内容重新拉进页面。',
+          title:'重新从数据库读取？',
+          desc:'重新拉一次 /api/state，把数据库里的最新内容刷到页面上。',
           ok:'重新读取',
           async cb(){
             await pull();
             tab = 'square'; query = ''; el('#search').value = '';
             renderAll();
-            toast('已重新读取 txt', 'ok');
+            toast('已从数据库重新加载', 'ok');
           }
         });
       } else {
@@ -1691,7 +1710,8 @@ async function boot(){
         currentPhone: localStorage.getItem(KEY + '.session') || null
       };
       BACKEND.files = d.files;
-      BACKEND.mode = 'cpp';
+      if (d.db) BACKEND.db = d.db;
+      BACKEND.mode = d.mode || 'cpp';
       normalizeReplies();
     }catch(e){
       BACKEND.mode = 'error';

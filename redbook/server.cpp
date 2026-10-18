@@ -1,9 +1,11 @@
 // ============================================================
-//  单机版小红书 · C++ 后端
-//  一个零依赖的 HTTP 服务，继续用 users/contents/comments/follows
-//  四个 txt 当数据库，文件格式与 2024 年那份 main.cpp 完全一致。
+//  单机版小红书 · C++ 后端（SQLite 版）
 //
-//  编译： g++ -O2 -std=c++17 server.cpp -o server.exe -lws2_32
+//  原来是四个 txt 当数据库；这一版把它们搬进 SQLite，
+//  txt 只作为「首次导入」的只读数据源，运行期一个字节都不写。
+//
+//  编译： gcc -O2 -c sqlite3.c -o sqlite3.o
+//         g++ -O2 -std=c++17 server.cpp sqlite3.o -o server.exe -lws2_32
 //  运行： server.exe [端口] [数据目录]
 // ============================================================
 #define WIN32_LEAN_AND_MEAN
@@ -26,37 +28,36 @@
 #include <string>
 #include <vector>
 
+#include "sqlite3.h"
+
 using namespace std;
 namespace fs = std::filesystem;
 
 // ---------------- 全局 ----------------
-static string DATA_DIR = "data";        // 四个 txt 所在目录
-static string WEB_ROOT = ".";           // index.html 所在目录
+static string DATA_DIR = "data";          // txt 种子 + 数据库所在目录
+static string WEB_ROOT = ".";
+static string DB_PATH  = "data/redbook.db";
+static sqlite3* g_db = nullptr;
 static const int MAX_BODY = 1 << 20;
 
-// ---------------- 编码：文件是 GBK，浏览器要 UTF-8 ----------------
-static string cpToUtf8(const string& in, UINT cp) {
+// ---------------- 编码（读老 txt 用） ----------------
+static string gbkToUtf8(const string& in) {
     if (in.empty()) return in;
-    int n = MultiByteToWideChar(cp, 0, in.c_str(), (int)in.size(), nullptr, 0);
+    int n = MultiByteToWideChar(936, 0, in.c_str(), (int)in.size(), nullptr, 0);
+    if (n <= 0) return in;
     wstring w(n, 0);
-    MultiByteToWideChar(cp, 0, in.c_str(), (int)in.size(), &w[0], n);
+    MultiByteToWideChar(936, 0, in.c_str(), (int)in.size(), &w[0], n);
     int m = WideCharToMultiByte(CP_UTF8, 0, w.c_str(), (int)w.size(), nullptr, 0, nullptr, nullptr);
     string o(m, 0);
     WideCharToMultiByte(CP_UTF8, 0, w.c_str(), (int)w.size(), &o[0], m, nullptr, nullptr);
     return o;
 }
-static string utf8ToCp(const string& in, UINT cp) {
-    if (in.empty()) return in;
-    int n = MultiByteToWideChar(CP_UTF8, 0, in.c_str(), (int)in.size(), nullptr, 0);
-    wstring w(n, 0);
-    MultiByteToWideChar(CP_UTF8, 0, in.c_str(), (int)in.size(), &w[0], n);
-    int m = WideCharToMultiByte(cp, 0, w.c_str(), (int)w.size(), nullptr, 0, nullptr, nullptr);
-    string o(m, 0);
-    WideCharToMultiByte(cp, 0, w.c_str(), (int)w.size(), &o[0], m, nullptr, nullptr);
-    return o;
+static string readFileUtf8(const string& path) {
+    ifstream f(path.c_str(), ios::binary);
+    if (!f) return "";
+    string raw((istreambuf_iterator<char>(f)), istreambuf_iterator<char>());
+    return gbkToUtf8(raw);
 }
-static string gbkToUtf8(const string& s) { return cpToUtf8(s, 936); }
-static string utf8ToGbk(const string& s) { return utf8ToCp(s, 936); }
 
 // ---------------- 小工具 ----------------
 static string trim(const string& s) {
@@ -77,19 +78,6 @@ static vector<string> splitLines(const string& s) {
         i = j + 1;
     }
     return out;
-}
-static string readFileUtf8(const string& path) {
-    ifstream f(path.c_str(), ios::binary);
-    if (!f) return "";
-    string raw((istreambuf_iterator<char>(f)), istreambuf_iterator<char>());
-    return gbkToUtf8(raw);
-}
-static bool writeFileUtf8(const string& path, const string& utf8) {
-    ofstream f(path.c_str(), ios::binary | ios::trunc);
-    if (!f) return false;
-    string gbk = utf8ToGbk(utf8);
-    f.write(gbk.data(), (streamsize)gbk.size());
-    return f.good();
 }
 static string jesc(const string& s) {
     string o;
@@ -139,7 +127,7 @@ static string jget(const string& body, const string& key) {
     return trim(body.substr(p, e - p));
 }
 
-// ---------------- 时间：ctime 字符串 <-> ISO ----------------
+// ---------------- 时间 ----------------
 static string isoFromCtime(const string& raw) {
     char wd[16] = {0}, mon[8] = {0};
     int d = 0, h = 0, mi = 0, s = 0, y = 0;
@@ -164,121 +152,227 @@ static time_t isoToTime(const string& iso) {
     t.tm_isdst = -1;
     return mktime(&t);
 }
-static string nowCtime() {
-    time_t t = time(nullptr);
-    string s = ctime(&t);           // 自带结尾换行，与原程序写入格式一致
-    return s;
-}
-static string isoAdd(const string& iso, int minutes) {
-    time_t t = isoToTime(iso);
-    if (!t) return iso;
-    t += (time_t)minutes * 60;
+static string fmtIso(time_t t) {
     struct tm tmv;
-#ifdef _WIN32
     localtime_s(&tmv, &t);
-#else
-    tmv = *localtime(&t);
-#endif
     char buf[40];
     strftime(buf, sizeof buf, "%Y-%m-%dT%H:%M:%S", &tmv);
     return buf;
 }
-
-// ---------------- 数据模型 ----------------
-struct User    { string phone, pwd, name; };
-struct Post    { string phone, name, timeRaw, content; };
-struct Comment { int no = 0; string phone, postContent, name, text; };
-struct Follow  { string up, fp, fname; };
-
-static vector<User> loadUsers() {
-    vector<User> v;
-    for (const string& ln : splitLines(readFileUtf8(DATA_DIR + "/users.txt"))) {
-        string line = trim(ln);
-        if (line.empty()) continue;
-        size_t a = line.find(' ');
-        if (a == string::npos) continue;
-        size_t b = line.find(' ', a + 1);
-        User u;
-        u.phone = line.substr(0, a);
-        if (b == string::npos) { u.pwd = line.substr(a + 1); }
-        else { u.pwd = line.substr(a + 1, b - a - 1); u.name = trim(line.substr(b + 1)); }
-        if (u.phone.empty()) continue;
-        v.push_back(u);
-    }
-    return v;
-}
-static void saveUsers(const vector<User>& v) {
-    ostringstream o;
-    for (const auto& u : v) o << u.phone << ' ' << u.pwd << ' ' << u.name << '\n';
-    writeFileUtf8(DATA_DIR + "/users.txt", o.str());
-}
-static vector<Post> loadPosts() {
-    vector<Post> v;
-    vector<string> L = splitLines(readFileUtf8(DATA_DIR + "/contents.txt"));
-    size_t i = 0;
-    while (i < L.size()) {
-        while (i < L.size() && trim(L[i]).empty()) i++;
-        if (i + 3 >= L.size()) break;
-        Post p;
-        p.phone   = trim(L[i]);
-        p.name    = trim(L[i + 1]);
-        p.timeRaw = trim(L[i + 2]);
-        p.content = L[i + 3];
-        i += 4;
-        if (p.phone.empty()) continue;
-        v.push_back(p);
-    }
-    return v;
-}
-static void savePosts(const vector<Post>& v) {
-    ostringstream o;
-    for (const auto& p : v)
-        o << p.phone << '\n' << p.name << '\n' << p.timeRaw << '\n' << p.content << '\n';
-    writeFileUtf8(DATA_DIR + "/contents.txt", o.str());
-}
-static vector<Comment> loadComments() {
-    vector<Comment> v;
-    vector<string> L = splitLines(readFileUtf8(DATA_DIR + "/comments.txt"));
-    size_t i = 0;
-    while (i < L.size()) {
-        while (i < L.size() && trim(L[i]).empty()) i++;
-        if (i + 3 >= L.size()) break;
-        string head = trim(L[i]);
-        size_t sp = head.find(' ');
-        Comment c;
-        c.no = atoi(head.substr(0, sp == string::npos ? head.size() : sp).c_str());
-        if (sp != string::npos) c.phone = trim(head.substr(sp + 1));
-        c.postContent = L[i + 1];
-        c.name = trim(L[i + 2]);
-        c.text = L[i + 3];
-        i += 4;
-        v.push_back(c);
-    }
-    return v;
-}
-static void saveComments(const vector<Comment>& v) {
-    ostringstream o;
-    for (const auto& c : v)
-        o << c.no << ' ' << c.phone << '\n' << c.postContent << '\n'
-          << c.name << '\n' << c.text << "\n\n";
-    writeFileUtf8(DATA_DIR + "/comments.txt", o.str());
-}
-static vector<Follow> loadFollows() {
-    vector<Follow> v;
-    vector<string> L = splitLines(readFileUtf8(DATA_DIR + "/follows.txt"));
-    vector<string> t;
-    for (const string& ln : L) if (!trim(ln).empty()) t.push_back(trim(ln));
-    for (size_t i = 0; i + 2 < t.size(); i += 3)
-        v.push_back(Follow{t[i], t[i + 1], t[i + 2]});
-    return v;
-}
-static void saveFollows(const vector<Follow>& v) {
-    ostringstream o;
-    for (const auto& f : v) o << f.up << '\n' << f.fp << '\n' << f.fname << '\n';
-    writeFileUtf8(DATA_DIR + "/follows.txt", o.str());
+static string nowIso() { return fmtIso(time(nullptr)); }
+static string isoAdd(const string& iso, int minutes) {
+    time_t t = isoToTime(iso);
+    if (!t) return iso;
+    return fmtIso(t + (time_t)minutes * 60);
 }
 
-// ---------------- 校验（与原 function.cpp 同规则） ----------------
+// ---------------- SQLite 薄封装 ----------------
+struct Stmt {
+    sqlite3_stmt* s = nullptr;
+    explicit Stmt(const string& sql) {
+        if (sqlite3_prepare_v2(g_db, sql.c_str(), -1, &s, nullptr) != SQLITE_OK) {
+            cerr << "[sql] prepare failed: " << sqlite3_errmsg(g_db) << "\n";
+            s = nullptr;
+        }
+    }
+    ~Stmt() { if (s) sqlite3_finalize(s); }
+    void bind(int i, const string& v) { sqlite3_bind_text(s, i, v.c_str(), -1, SQLITE_TRANSIENT); }
+    void bind(int i, long long v) { sqlite3_bind_int64(s, i, v); }
+    bool row() { return s && sqlite3_step(s) == SQLITE_ROW; }
+    bool done() { return s && sqlite3_step(s) == SQLITE_DONE; }
+    string txt(int c) const {
+        const char* p = (const char*)sqlite3_column_text(s, c);
+        return p ? p : "";
+    }
+    long long num(int c) const { return sqlite3_column_int64(s, c); }
+};
+static void dbExec(const string& sql) {
+    char* err = nullptr;
+    if (sqlite3_exec(g_db, sql.c_str(), nullptr, nullptr, &err) != SQLITE_OK) {
+        cerr << "[sql] " << (err ? err : "?") << "\n";
+        if (err) sqlite3_free(err);
+    }
+}
+static long long scalar(const string& sql, const string& arg = "") {
+    Stmt st(sql);
+    if (!arg.empty()) st.bind(1, arg);
+    if (st.row()) return st.num(0);
+    return 0;
+}
+
+// ---------------- 建表 + 从 txt 导入 ----------------
+static void ensureSchema() {
+    dbExec("PRAGMA journal_mode=WAL;");
+    dbExec(
+        "CREATE TABLE IF NOT EXISTS users("
+        "  phone TEXT PRIMARY KEY,"
+        "  pwd   TEXT NOT NULL,"
+        "  name  TEXT NOT NULL);"
+        "CREATE TABLE IF NOT EXISTS posts("
+        "  id      INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "  phone   TEXT NOT NULL,"
+        "  name    TEXT NOT NULL,"
+        "  time    TEXT NOT NULL,"
+        "  content TEXT NOT NULL,"
+        "  deleted INTEGER NOT NULL DEFAULT 0);"
+        "CREATE TABLE IF NOT EXISTS comments("
+        "  id        INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "  post_id   INTEGER NOT NULL,"
+        "  phone     TEXT,"
+        "  name      TEXT,"
+        "  text      TEXT NOT NULL,"
+        "  time      TEXT NOT NULL,"
+        "  parent_id INTEGER,"
+        "  deleted   INTEGER NOT NULL DEFAULT 0);"
+        "CREATE TABLE IF NOT EXISTS follows("
+        "  user_phone   TEXT NOT NULL,"
+        "  follow_phone TEXT NOT NULL,"
+        "  follow_name  TEXT NOT NULL,"
+        "  PRIMARY KEY(user_phone, follow_phone));"
+        "CREATE INDEX IF NOT EXISTS idx_comments_post ON comments(post_id);"
+        "CREATE INDEX IF NOT EXISTS idx_posts_time ON posts(time);");
+}
+
+// 把 "评论正文博主回复：回复1博主回复：回复2" 拆开
+static void splitReplies(const string& raw, string& main, vector<string>& replies) {
+    string t = raw;
+    // 老数据里可能写成 "   //博主回复："
+    size_t pos = 0;
+    while ((pos = t.find("//博主回复", pos)) != string::npos) t.erase(pos, 2);
+    const string KEY = "博主回复：";
+    main = t;
+    size_t p = t.find(KEY);
+    if (p == string::npos) { main = trim(t); return; }
+    main = trim(t.substr(0, p));
+    size_t cur = p + KEY.size();
+    while (true) {
+        size_t next = t.find(KEY, cur);
+        string part = trim(t.substr(cur, next == string::npos ? string::npos : next - cur));
+        if (!part.empty()) replies.push_back(part);
+        if (next == string::npos) break;
+        cur = next + KEY.size();
+    }
+    if (main.empty() && !replies.empty()) { main = replies.front(); replies.erase(replies.begin()); }
+}
+
+static void importFromTxt() {
+    if (scalar("SELECT COUNT(*) FROM users") > 0) return;   // 已经导过
+    cout << "[db] 空库，开始从 txt 导入…\n";
+
+    sqlite3_exec(g_db, "BEGIN;", nullptr, nullptr, nullptr);
+
+    int nUsers = 0;
+    {
+        vector<string> L = splitLines(readFileUtf8(DATA_DIR + "/users.txt"));
+        for (const string& ln : L) {
+            string line = trim(ln);
+            if (line.empty()) continue;
+            size_t a = line.find(' ');
+            if (a == string::npos) continue;
+            size_t b = line.find(' ', a + 1);
+            string phone = line.substr(0, a);
+            string pwd, name;
+            if (b == string::npos) pwd = line.substr(a + 1);
+            else { pwd = line.substr(a + 1, b - a - 1); name = trim(line.substr(b + 1)); }
+            if (phone.empty()) continue;
+            Stmt st("INSERT OR IGNORE INTO users(phone,pwd,name) VALUES(?,?,?)");
+            st.bind(1, phone); st.bind(2, pwd); st.bind(3, name);
+            st.done();
+            nUsers++;
+        }
+    }
+
+    int nPosts = 0, nDeleted = 0;
+    {
+        vector<string> L = splitLines(readFileUtf8(DATA_DIR + "/contents.txt"));
+        size_t i = 0;
+        while (i < L.size()) {
+            while (i < L.size() && trim(L[i]).empty()) i++;
+            if (i + 3 >= L.size()) break;
+            string phone = trim(L[i]), name = trim(L[i + 1]), timeRaw = trim(L[i + 2]), content = L[i + 3];
+            i += 4;
+            if (phone.empty()) continue;
+            bool del = (phone == "##");
+            Stmt st("INSERT INTO posts(phone,name,time,content,deleted) VALUES(?,?,?,?,?)");
+            st.bind(1, phone); st.bind(2, name); st.bind(3, isoFromCtime(timeRaw));
+            st.bind(4, content); st.bind(5, del ? 1LL : 0LL);
+            st.done();
+            nPosts++;
+            if (del) nDeleted++;
+        }
+    }
+
+    int nComments = 0;
+    {
+        vector<string> L = splitLines(readFileUtf8(DATA_DIR + "/comments.txt"));
+        size_t i = 0;
+        int k = 0;
+        while (i < L.size()) {
+            while (i < L.size() && trim(L[i]).empty()) i++;
+            if (i + 3 >= L.size()) break;
+            string head = trim(L[i]);
+            size_t sp = head.find(' ');
+            string phone = (sp == string::npos) ? "" : trim(head.substr(sp + 1));
+            string postContent = L[i + 1], cname = trim(L[i + 2]), rawText = L[i + 3];
+            i += 4;
+
+            long long pid = 0;
+            {
+                Stmt q("SELECT id FROM posts WHERE content=? AND deleted=0 ORDER BY id LIMIT 1");
+                q.bind(1, postContent);
+                if (q.row()) pid = q.num(0);
+            }
+            if (!pid) continue;
+            string ptime, pname;
+            {
+                Stmt q("SELECT time,name FROM posts WHERE id=?");
+                q.bind(1, pid);
+                if (q.row()) { ptime = q.txt(0); pname = q.txt(1); }
+            }
+            string main;
+            vector<string> replies;
+            splitReplies(rawText, main, replies);
+            string t = isoAdd(ptime, (k + 1) * 7);
+            k++;
+            long long cid = 0;
+            {
+                Stmt st("INSERT INTO comments(post_id,phone,name,text,time,parent_id) VALUES(?,?,?,?,?,NULL)");
+                st.bind(1, pid); st.bind(2, phone); st.bind(3, cname); st.bind(4, main); st.bind(5, t);
+                st.done();
+                cid = sqlite3_last_insert_rowid(g_db);
+            }
+            int j = 1;
+            for (const string& r : replies) {
+                Stmt st("INSERT INTO comments(post_id,phone,name,text,time,parent_id) VALUES(?,?,?,?,?,?)");
+                st.bind(1, pid); st.bind(2, ""); st.bind(3, pname); st.bind(4, r);
+                st.bind(5, isoAdd(t, j)); st.bind(6, cid);
+                st.done();
+                j++;
+            }
+            nComments++;
+        }
+    }
+
+    int nFollows = 0;
+    {
+        vector<string> raw = splitLines(readFileUtf8(DATA_DIR + "/follows.txt"));
+        vector<string> t;
+        for (const string& ln : raw) if (!trim(ln).empty()) t.push_back(trim(ln));
+        for (size_t i = 0; i + 2 < t.size(); i += 3) {
+            Stmt st("INSERT OR IGNORE INTO follows(user_phone,follow_phone,follow_name) VALUES(?,?,?)");
+            st.bind(1, t[i]); st.bind(2, t[i + 1]); st.bind(3, t[i + 2]);
+            st.done();
+            nFollows++;
+        }
+    }
+
+    sqlite3_exec(g_db, "COMMIT;", nullptr, nullptr, nullptr);
+
+    cout << "[db] 导入完成: " << nUsers << " 用户 / " << nPosts << " 帖（含 "
+         << nDeleted << " 条墓碑）/ " << nComments << " 评论 / " << nFollows << " 关注\n";
+}
+
+// ---------------- 校验 ----------------
 static bool validPhone(const string& p) {
     if (p.size() != 11) return false;
     for (char c : p) if (!isdigit((unsigned char)c)) return false;
@@ -302,225 +396,230 @@ static string pwdError(const string& p) {
     return "";
 }
 
-// ---------------- JSON 输出 ----------------
-static string jsonState() {
-    vector<User> users = loadUsers();
-    vector<Post> posts = loadPosts();
-    vector<Comment> comments = loadComments();
-    vector<Follow> follows = loadFollows();
-
-    // 帖子 id = 文件里的序号；已删除（##）的不输出
-    vector<pair<string, string>> live;   // (id, content)
-    ostringstream po;
-    po << "[";
-    bool first = true;
-    for (size_t i = 0; i < posts.size(); i++) {
-        if (posts[i].phone == "##") continue;
-        string id = "p" + to_string(i + 1);
-        live.push_back(make_pair(id, posts[i].content));
-        if (!first) po << ",";
-        first = false;
-        po << "{\"id\":\"" << id << "\",\"phone\":\"" << jesc(posts[i].phone) << "\",\"name\":\""
-           << jesc(posts[i].name) << "\",\"time\":\"" << isoFromCtime(posts[i].timeRaw)
-           << "\",\"content\":\"" << jesc(posts[i].content) << "\"}";
-    }
-    po << "]";
-
-    // 评论：靠「评论记录里的 postContent」找回所属帖子，时间按原帖时间顺延
-    ostringstream co;
-    co << "[";
-    first = true;
-    for (size_t i = 0; i < comments.size(); i++) {
-        string pid;
-        string ptime;
-        int k = 0;
-        for (size_t j = 0; j < posts.size(); j++) {
-            if (posts[j].phone == "##") continue;
-            if (posts[j].content == comments[i].postContent) {
-                pid = "p" + to_string(j + 1);
-                ptime = isoFromCtime(posts[j].timeRaw);
-                break;
-            }
-        }
-        if (pid.empty()) continue;
-        for (size_t j = 0; j < i; j++)
-            if (comments[j].postContent == comments[i].postContent) k++;
-        if (!first) co << ",";
-        first = false;
-        co << "{\"id\":\"c" << (i + 1) << "\",\"postId\":\"" << pid << "\",\"phone\":\""
-           << jesc(comments[i].phone) << "\",\"name\":\"" << jesc(comments[i].name)
-           << "\",\"text\":\"" << jesc(comments[i].text) << "\",\"time\":\""
-           << isoAdd(ptime, (k + 1) * 7) << "\"}";
-    }
-    co << "]";
-
-    ostringstream uo, fo;
-    uo << "[";
-    first = true;
-    for (const auto& u : users) {
-        if (!first) uo << ",";
-        first = false;
-        uo << "{\"phone\":\"" << jesc(u.phone) << "\",\"pwd\":\"" << jesc(u.pwd)
-           << "\",\"name\":\"" << jesc(u.name) << "\"}";
-    }
-    uo << "]";
-    fo << "[";
-    first = true;
-    for (const auto& f : follows) {
-        if (!first) fo << ",";
-        first = false;
-        fo << "{\"userphone\":\"" << jesc(f.up) << "\",\"fophone\":\"" << jesc(f.fp)
-           << "\",\"foname\":\"" << jesc(f.fname) << "\"}";
-    }
-    fo << "]";
-
-    ostringstream o;
-    o << "{\"mode\":\"cpp\",\"users\":" << uo.str() << ",\"posts\":" << po.str()
-      << ",\"comments\":" << co.str() << ",\"follows\":" << fo.str()
-      << ",\"files\":{\"users\":" << users.size() << ",\"contents\":" << posts.size()
-      << ",\"comments\":" << comments.size() << ",\"follows\":" << follows.size() << "}}";
-    return o.str();
+// ---------------- JSON ----------------
+static string okJson(const string& extra = "") {
+    return extra.empty() ? "{\"ok\":true}" : "{\"ok\":true," + extra + "}";
 }
-static string ok(const string& extra = "") {
-    if (extra.empty()) return "{\"ok\":true}";
-    return "{\"ok\":true," + extra + "}";
-}
-static string fail(const string& msg) {
+static string failJson(const string& msg) {
     return "{\"ok\":false,\"error\":\"" + jesc(msg) + "\"}";
+}
+
+static string jsonState() {
+    ostringstream o;
+    o << "{\"mode\":\"sqlite\"";
+
+    o << ",\"users\":[";
+    {
+        Stmt st("SELECT phone,pwd,name FROM users ORDER BY rowid");
+        bool first = true;
+        while (st.row()) {
+            if (!first) o << ",";
+            first = false;
+            o << "{\"phone\":\"" << jesc(st.txt(0)) << "\",\"pwd\":\"" << jesc(st.txt(1))
+              << "\",\"name\":\"" << jesc(st.txt(2)) << "\"}";
+        }
+    }
+    o << "]";
+
+    o << ",\"posts\":[";
+    {
+        Stmt st("SELECT id,phone,name,time,content FROM posts WHERE deleted=0 ORDER BY time DESC, id DESC");
+        bool first = true;
+        while (st.row()) {
+            if (!first) o << ",";
+            first = false;
+            o << "{\"id\":\"p" << st.num(0) << "\",\"phone\":\"" << jesc(st.txt(1))
+              << "\",\"name\":\"" << jesc(st.txt(2)) << "\",\"time\":\"" << jesc(st.txt(3))
+              << "\",\"content\":\"" << jesc(st.txt(4)) << "\"}";
+        }
+    }
+    o << "]";
+
+    o << ",\"comments\":[";
+    {
+        Stmt st("SELECT id,post_id,phone,name,text,time FROM comments "
+                "WHERE deleted=0 AND parent_id IS NULL ORDER BY time, id");
+        bool first = true;
+        while (st.row()) {
+            long long cid = st.num(0);
+            if (!first) o << ",";
+            first = false;
+            o << "{\"id\":\"c" << cid << "\",\"postId\":\"p" << st.num(1) << "\",\"phone\":\""
+              << jesc(st.txt(2)) << "\",\"name\":\"" << jesc(st.txt(3)) << "\",\"text\":\""
+              << jesc(st.txt(4)) << "\",\"time\":\"" << jesc(st.txt(5)) << "\",\"replies\":[";
+            Stmt rq("SELECT name,text,time FROM comments WHERE parent_id=? AND deleted=0 ORDER BY time,id");
+            rq.bind(1, cid);
+            bool f2 = true;
+            while (rq.row()) {
+                if (!f2) o << ",";
+                f2 = false;
+                o << "{\"name\":\"" << jesc(rq.txt(0)) << "\",\"text\":\"" << jesc(rq.txt(1))
+                  << "\",\"time\":\"" << jesc(rq.txt(2)) << "\"}";
+            }
+            o << "]}";
+        }
+    }
+    o << "]";
+
+    o << ",\"follows\":[";
+    {
+        Stmt st("SELECT user_phone,follow_phone,follow_name FROM follows ORDER BY rowid");
+        bool first = true;
+        while (st.row()) {
+            if (!first) o << ",";
+            first = false;
+            o << "{\"userphone\":\"" << jesc(st.txt(0)) << "\",\"fophone\":\"" << jesc(st.txt(1))
+              << "\",\"foname\":\"" << jesc(st.txt(2)) << "\"}";
+        }
+    }
+    o << "]";
+
+    o << ",\"files\":{\"users\":" << scalar("SELECT COUNT(*) FROM users")
+      << ",\"contents\":" << scalar("SELECT COUNT(*) FROM posts")
+      << ",\"comments\":" << scalar("SELECT COUNT(*) FROM comments WHERE parent_id IS NULL AND deleted=0")
+      << ",\"follows\":" << scalar("SELECT COUNT(*) FROM follows") << "}";
+
+    o << ",\"db\":{\"path\":\"" << jesc(DB_PATH) << "\",\"engine\":\"SQLite "
+      << sqlite3_libversion() << "\"}}";
+    return o.str();
 }
 
 // ---------------- 业务 ----------------
 static string apiLogin(const string& body) {
     string phone = trim(jget(body, "phone"));
     string pwd = jget(body, "pwd");
-    if (!validPhone(phone)) return fail("手机号格式不正确");
-    for (const auto& u : loadUsers()) {
-        if (u.phone != phone) continue;
-        if (u.pwd != pwd) return fail("密码不正确");
-        return ok("\"user\":{\"phone\":\"" + jesc(u.phone) + "\",\"name\":\"" + jesc(u.name) + "\"}");
-    }
-    return fail("该手机号尚未注册");
+    if (!validPhone(phone)) return failJson("手机号格式不正确");
+    Stmt st("SELECT pwd,name FROM users WHERE phone=?");
+    st.bind(1, phone);
+    if (!st.row()) return failJson("该手机号尚未注册");
+    if (st.txt(0) != pwd) return failJson("密码不正确");
+    return okJson("\"user\":{\"phone\":\"" + jesc(phone) + "\",\"name\":\"" + jesc(st.txt(1)) + "\"}");
 }
 static string apiRegister(const string& body) {
     string phone = trim(jget(body, "phone"));
     string pwd = jget(body, "pwd");
     string name = trim(jget(body, "name"));
-    if (!validPhone(phone)) return fail("手机号格式不正确");
+    if (!validPhone(phone)) return failJson("手机号格式不正确");
     string e = pwdError(pwd);
-    if (!e.empty()) return fail(e);
-    if (name.empty()) return fail("昵称不能为空");
-    vector<User> users = loadUsers();
-    for (const auto& u : users) if (u.phone == phone) return fail("该手机号已经注册");
-    users.push_back(User{phone, pwd, name});
-    saveUsers(users);
-    return ok("\"user\":{\"phone\":\"" + jesc(phone) + "\",\"name\":\"" + jesc(name) + "\"}");
+    if (!e.empty()) return failJson(e);
+    if (name.empty()) return failJson("昵称不能为空");
+    if (scalar("SELECT COUNT(*) FROM users WHERE phone=?", phone) > 0) return failJson("该手机号已经注册");
+    Stmt st("INSERT INTO users(phone,pwd,name) VALUES(?,?,?)");
+    st.bind(1, phone); st.bind(2, pwd); st.bind(3, name);
+    if (!st.done()) return failJson("写入失败");
+    return okJson("\"user\":{\"phone\":\"" + jesc(phone) + "\",\"name\":\"" + jesc(name) + "\"}");
 }
 static string apiCreatePost(const string& body) {
     string phone = trim(jget(body, "phone"));
     string content = trim(jget(body, "content"));
-    if (content.empty()) return fail("内容不能为空");
-    if (content.size() > 1200) return fail("内容太长了");
+    if (content.empty()) return failJson("内容不能为空");
+    if (content.size() > 1200) return failJson("内容太长了");
     string name;
-    bool found = false;
-    for (const auto& u : loadUsers())
-        if (u.phone == phone) { name = u.name; found = true; break; }
-    if (!found) return fail("用户不存在，请重新登录");
-
-    vector<Post> posts = loadPosts();
-    Post p;
-    p.phone = phone;
-    p.name = name;
-    p.timeRaw = trim(nowCtime());
-    p.content = content;
-    posts.push_back(p);
-    savePosts(posts);
-    return ok("\"post\":{\"id\":\"p" + to_string(posts.size()) + "\"}");
+    {
+        Stmt q("SELECT name FROM users WHERE phone=?");
+        q.bind(1, phone);
+        if (!q.row()) return failJson("用户不存在，请重新登录");
+        name = q.txt(0);
+    }
+    Stmt st("INSERT INTO posts(phone,name,time,content) VALUES(?,?,?,?)");
+    st.bind(1, phone); st.bind(2, name); st.bind(3, nowIso()); st.bind(4, content);
+    if (!st.done()) return failJson("发布失败");
+    return okJson("\"post\":{\"id\":\"p" + to_string(sqlite3_last_insert_rowid(g_db)) + "\"}");
 }
 static string apiDeletePost(const string& body) {
     string id = jget(body, "id");
-    if (id.size() < 2 || id[0] != 'p') return fail("参数不正确");
-    size_t idx = (size_t)atoi(id.c_str() + 1);
-    vector<Post> posts = loadPosts();
-    if (idx < 1 || idx > posts.size()) return fail("动态不存在");
-    // 与原程序一致：把手机号改成 ## 当墓碑，而不是真的删掉
-    posts[idx - 1].phone = "##";
-    savePosts(posts);
-    return ok();
+    string phone = trim(jget(body, "phone"));
+    if (id.size() < 2) return failJson("参数不正确");
+    long long pid = atoll(id.c_str() + 1);
+    Stmt q("SELECT phone FROM posts WHERE id=? AND deleted=0");
+    q.bind(1, pid);
+    if (!q.row()) return failJson("动态不存在");
+    if (!phone.empty() && q.txt(0) != phone) return failJson("只能删除自己的动态");
+    Stmt st("UPDATE posts SET deleted=1 WHERE id=?");
+    st.bind(1, pid);
+    st.done();
+    return okJson();
 }
 static string apiCreateComment(const string& body) {
     string postId = jget(body, "postId");
     string phone = trim(jget(body, "phone"));
     string text = trim(jget(body, "text"));
     string parentId = jget(body, "parentId");
-    if (text.empty()) return fail("评论不能为空");
-    if (text.size() > 600) return fail("评论太长了");
+    if (text.empty()) return failJson("评论不能为空");
+    if (text.size() > 600) return failJson("评论太长了");
+    if (postId.size() < 2) return failJson("参数不正确");
+    long long pid = atoll(postId.c_str() + 1);
 
-    vector<Post> posts = loadPosts();
-    size_t idx = (size_t)atoi(postId.c_str() + 1);
-    if (idx < 1 || idx > posts.size()) return fail("动态不存在");
-    const Post& post = posts[idx - 1];
-    if (post.phone == "##") return fail("动态已被删除");
-
-    string name;
-    bool found = false;
-    for (const auto& u : loadUsers())
-        if (u.phone == phone) { name = u.name; found = true; break; }
-    if (!found) return fail("用户不存在，请重新登录");
-
-    vector<Comment> cs = loadComments();
-
-    // 回复某人：和原程序一样，把「   //博主回复：」拼到那条评论后面
-    if (!parentId.empty() && parentId.size() > 1 && parentId[0] == 'c') {
-        size_t ci = (size_t)atoi(parentId.c_str() + 1);
-        if (ci < 1 || ci > cs.size()) return fail("要回复的评论不存在");
-        cs[ci - 1].text += "   //博主回复：" + text;
-        saveComments(cs);
-        return ok();
+    {
+        Stmt q("SELECT deleted FROM posts WHERE id=?");
+        q.bind(1, pid);
+        if (!q.row()) return failJson("动态不存在");
+        if (q.num(0)) return failJson("动态已被删除");
     }
-
-    int maxNo = 0;
-    for (const auto& c : cs) if (c.postContent == post.content) maxNo = max(maxNo, c.no);
-    Comment c;
-    c.no = maxNo + 1;
-    c.phone = phone;
-    c.postContent = post.content;
-    c.name = name;
-    c.text = text;
-    cs.push_back(c);
-    saveComments(cs);
-    return ok();
+    string name;
+    {
+        Stmt q("SELECT name FROM users WHERE phone=?");
+        q.bind(1, phone);
+        if (!q.row()) return failJson("用户不存在，请重新登录");
+        name = q.txt(0);
+    }
+    long long parent = 0;
+    if (!parentId.empty() && parentId.size() > 1) {
+        parent = atoll(parentId.c_str() + 1);
+        Stmt q("SELECT COUNT(*) FROM comments WHERE id=? AND deleted=0 AND post_id=?");
+        q.bind(1, parent); q.bind(2, pid);
+        if (!q.row() || q.num(0) == 0) return failJson("要回复的评论不存在");
+    }
+    Stmt st("INSERT INTO comments(post_id,phone,name,text,time,parent_id) VALUES(?,?,?,?,?,?)");
+    st.bind(1, pid); st.bind(2, phone); st.bind(3, name); st.bind(4, text); st.bind(5, nowIso());
+    if (parent) st.bind(6, parent); else sqlite3_bind_null(st.s, 6);
+    if (!st.done()) return failJson("评论失败");
+    return okJson();
 }
 static string apiDeleteComment(const string& body) {
     string id = jget(body, "id");
-    if (id.size() < 2 || id[0] != 'c') return fail("参数不正确");
-    size_t idx = (size_t)atoi(id.c_str() + 1);
-    vector<Comment> cs = loadComments();
-    if (idx < 1 || idx > cs.size()) return fail("评论不存在");
-    cs.erase(cs.begin() + (idx - 1));
-    saveComments(cs);
-    return ok();
+    string phone = trim(jget(body, "phone"));
+    if (id.size() < 2) return failJson("参数不正确");
+    long long cid = atoll(id.c_str() + 1);
+    Stmt q("SELECT phone FROM comments WHERE id=? AND deleted=0");
+    q.bind(1, cid);
+    if (!q.row()) return failJson("评论不存在");
+    if (!phone.empty() && q.txt(0) != phone) return failJson("只能删除自己的评论");
+    {
+        Stmt st("UPDATE comments SET deleted=1 WHERE id=?");
+        st.bind(1, cid);
+        st.done();
+    }
+    {
+        Stmt st("UPDATE comments SET deleted=1 WHERE parent_id=?");
+        st.bind(1, cid);
+        st.done();
+    }
+    return okJson();
 }
 static string apiFollow(const string& body) {
     string phone = trim(jget(body, "phone"));
     string target = trim(jget(body, "target"));
     string action = jget(body, "action");
-    if (phone.empty() || target.empty()) return fail("参数不正确");
-    if (phone == target) return fail("不能关注自己");
-
-    vector<Follow> fs = loadFollows();
-    auto it = find_if(fs.begin(), fs.end(),
-        [&](const Follow& f) { return f.up == phone && f.fp == target; });
+    if (phone.empty() || target.empty()) return failJson("参数不正确");
+    if (phone == target) return failJson("不能关注自己");
     if (action == "remove") {
-        if (it != fs.end()) fs.erase(it);
-        saveFollows(fs);
-        return ok();
+        Stmt st("DELETE FROM follows WHERE user_phone=? AND follow_phone=?");
+        st.bind(1, phone); st.bind(2, target);
+        st.done();
+        return okJson();
     }
-    if (it != fs.end()) return ok();       // 已经关注了
     string fname;
-    for (const auto& u : loadUsers()) if (u.phone == target) { fname = u.name; break; }
-    fs.push_back(Follow{phone, target, fname});
-    saveFollows(fs);
-    return ok();
+    {
+        Stmt q("SELECT name FROM users WHERE phone=?");
+        q.bind(1, target);
+        if (!q.row()) return failJson("对方不存在");
+        fname = q.txt(0);
+    }
+    Stmt st("INSERT OR IGNORE INTO follows(user_phone,follow_phone,follow_name) VALUES(?,?,?)");
+    st.bind(1, phone); st.bind(2, target); st.bind(3, fname);
+    st.done();
+    return okJson();
 }
 
 // ---------------- HTTP ----------------
@@ -530,7 +629,6 @@ static const char* statusText(int code) {
         case 204: return "No Content";
         case 400: return "Bad Request";
         case 404: return "Not Found";
-        case 405: return "Method Not Allowed";
         default:  return "OK";
     }
 }
@@ -555,24 +653,10 @@ static void respond(SOCKET s, int code, const string& type, const string& body) 
     sendAll(s, o.str());
     if (!body.empty()) sendAll(s, body);
 }
-static string urlDecode(const string& s) {
-    string o;
-    for (size_t i = 0; i < s.size(); i++) {
-        if (s[i] == '%' && i + 2 < s.size()) {
-            int v = 0;
-            sscanf(s.substr(i + 1, 2).c_str(), "%x", &v);
-            o += (char)v;
-            i += 2;
-        } else if (s[i] == '+') o += ' ';
-        else o += s[i];
-    }
-    return o;
-}
 static string serveFile(const string& rel) {
     ifstream f((WEB_ROOT + "/" + rel).c_str(), ios::binary);
     if (!f) return "";
-    string s((istreambuf_iterator<char>(f)), istreambuf_iterator<char>());
-    return s;
+    return string((istreambuf_iterator<char>(f)), istreambuf_iterator<char>());
 }
 static void handleClient(SOCKET c) {
     string req;
@@ -611,7 +695,7 @@ static void handleClient(SOCKET c) {
 
     if (method == "GET" && (path == "/" || path == "/index.html")) {
         string html = serveFile("index.html");
-        if (html.empty()) { respond(c, 404, "text/plain; charset=utf-8", "index.html not found"); }
+        if (html.empty()) respond(c, 404, "text/plain; charset=utf-8", "index.html not found");
         else respond(c, 200, "text/html; charset=utf-8", html);
         closesocket(c);
         return;
@@ -623,15 +707,15 @@ static void handleClient(SOCKET c) {
     }
     if (method == "POST") {
         string out;
-        if (path == "/api/login")            out = apiLogin(body);
-        else if (path == "/api/register")    out = apiRegister(body);
-        else if (path == "/api/post/create") out = apiCreatePost(body);
-        else if (path == "/api/post/delete") out = apiDeletePost(body);
-        else if (path == "/api/comment/create") out = apiCreateComment(body);
-        else if (path == "/api/comment/delete") out = apiDeleteComment(body);
-        else if (path == "/api/follow")      out = apiFollow(body);
+        if (path == "/api/login")                out = apiLogin(body);
+        else if (path == "/api/register")        out = apiRegister(body);
+        else if (path == "/api/post/create")     out = apiCreatePost(body);
+        else if (path == "/api/post/delete")     out = apiDeletePost(body);
+        else if (path == "/api/comment/create")  out = apiCreateComment(body);
+        else if (path == "/api/comment/delete")  out = apiDeleteComment(body);
+        else if (path == "/api/follow")          out = apiFollow(body);
         else {
-            respond(c, 404, "application/json; charset=utf-8", fail("接口不存在"));
+            respond(c, 404, "application/json; charset=utf-8", failJson("接口不存在"));
             closesocket(c);
             return;
         }
@@ -650,10 +734,11 @@ int main(int argc, char** argv) {
     if (argc >= 2) port = atoi(argv[1]);
     if (port <= 0) port = 8787;
     if (argc >= 3) DATA_DIR = argv[2];
+    DB_PATH = DATA_DIR + "/redbook.db";
 
     if (!fs::exists(DATA_DIR)) fs::create_directories(DATA_DIR);
 
-    // 首次运行：如果数据目录里没有 txt，就从原始的 Homework 目录拷一份过来
+    // 数据目录里没有 txt 就从原始 Homework 目录拷一份（只读，仅作导入源）
     const char* need[] = {"users.txt", "contents.txt", "comments.txt", "follows.txt"};
     bool anyMissing = false;
     for (const char* f : need) if (!fs::exists(DATA_DIR + "/" + f)) anyMissing = true;
@@ -664,11 +749,17 @@ int main(int argc, char** argv) {
             for (const char* f : need)
                 if (!fs::exists(DATA_DIR + "/" + f))
                     fs::copy_file(src + "/" + f, DATA_DIR + "/" + f, fs::copy_options::overwrite_existing);
-            cout << "[init] 已从 " << src << " 复制四个 txt 到 " << DATA_DIR << "\n";
-        } else {
-            cout << "[warn] 没找到原始数据，将以空库启动\n";
+            cout << "[init] 已从 " << src << " 复制四个 txt 作为导入源\n";
         }
     }
+
+    if (sqlite3_open(DB_PATH.c_str(), &g_db) != SQLITE_OK) {
+        cout << "[error] 打不开数据库 " << DB_PATH << ": " << sqlite3_errmsg(g_db) << "\n";
+        return 1;
+    }
+    sqlite3_busy_timeout(g_db, 3000);
+    ensureSchema();
+    importFromTxt();
 
     WSADATA wsa;
     if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
@@ -677,7 +768,6 @@ int main(int argc, char** argv) {
     }
     SOCKET srv = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (srv == INVALID_SOCKET) { cout << "[error] socket 创建失败\n"; return 1; }
-
     int yes = 1;
     setsockopt(srv, SOL_SOCKET, SO_REUSEADDR, (const char*)&yes, sizeof yes);
 
@@ -694,9 +784,10 @@ int main(int argc, char** argv) {
     listen(srv, 32);
 
     cout << "==========================================\n";
-    cout << "  单机版小红书 · C++ 后端\n";
+    cout << "  单机版小红书 · 后端（SQLite）\n";
     cout << "  http://localhost:" << port << "\n";
-    cout << "  数据目录: " << fs::absolute(DATA_DIR).string() << "\n";
+    cout << "  数据库: " << fs::absolute(DB_PATH).string() << "\n";
+    cout << "  引擎: " << sqlite3_libversion() << "\n";
     cout << "  Ctrl+C 停止\n";
     cout << "==========================================\n";
     cout.flush();
@@ -706,6 +797,7 @@ int main(int argc, char** argv) {
         if (c == INVALID_SOCKET) continue;
         handleClient(c);
     }
+    sqlite3_close(g_db);
     closesocket(srv);
     WSACleanup();
     return 0;
