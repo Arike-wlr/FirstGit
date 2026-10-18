@@ -1,7 +1,11 @@
-#define _CRT_SECURE_NO_WARNINGS
+Ôªø#define _CRT_SECURE_NO_WARNINGS
 #include<iostream>
 #include<cstring>
 #include"function.h"
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include<windows.h>
 #include<ctime>
 #include<fstream>
 #include<string>
@@ -59,10 +63,12 @@ void remove(comments* head1)
 }
 int main()
 {
+	SetConsoleOutputCP(CP_UTF8);
+	SetConsoleCP(CP_UTF8);
 	char exitc[2] = { '#' };
 	string exits = "#";
-	cout << "ª∂”≠ƒ˙¿¥µΩµ•ª˙∞Ê–°∫Ï È£¨«Îµ«¬º/◊¢≤·£°" << endl;
-	cout << "»ÙœÎÕÀ≥ˆ≥Ã–Ú£¨ø…ÀÊ ±∞¥°Æ#°Øº¸ÕÀ≥ˆ" << endl;
+	cout << "Ê¨¢ËøéÊÇ®Êù•Âà∞ÂçïÊú∫ÁâàÂ∞èÁ∫¢‰π¶ÔºåËØ∑ÁôªÂΩï/Ê≥®ÂÜåÔºÅ" << endl;
+	cout << "Ëã•ÊÉ≥ÈÄÄÂá∫Á®ãÂ∫èÔºåÂèØÈöèÊó∂Êåâ‚Äò#‚ÄôÈîÆÈÄÄÂá∫" << endl;
 	struct User
 	{
 		char phonenum[12];
@@ -72,32 +78,32 @@ int main()
 	User now;
 	do {
 
-		cout << "«Î ‰»Î ÷ª˙∫≈£∫";
+		cout << "ËØ∑ËæìÂÖ•ÊâãÊú∫Âè∑Ôºö";
 		 cin >> use.phonenum;use.phonenum[11] = '\0';
 		if (strcmp(use.phonenum, exitc) == 0) return 0;
 		//for (int i = 0;i < 11;i++) { cout<< phonenum[i]; }
-		if (!phone(use.phonenum)) cout << "±ß«∏ƒ˙ ‰»Îµƒ ÷ª˙∫≈”–ŒÛ£°" << endl;
+		if (!phone(use.phonenum)) cout << "Êä±Ê≠âÊÇ®ËæìÂÖ•ÁöÑÊâãÊú∫Âè∑ÊúâËØØÔºÅ" << endl;
 		else break;
 	}
 	while (!phone(use.phonenum));
-	//“‘…œ « ‰»Î ÷ª˙∫≈
-	// “‘œ¬ºÏ≤È ÷ª˙∫≈ «∑Ò“—æ≠◊¢≤·
+	//‰ª•‰∏äÊòØËæìÂÖ•ÊâãÊú∫Âè∑
+	// ‰ª•‰∏ãÊ£ÄÊü•ÊâãÊú∫Âè∑ÊòØÂê¶Â∑≤ÁªèÊ≥®ÂÜå
 	User u1;
 	ifstream in_file("users.txt", ios::in);
 	if (!in_file)exit(-1);
 	in_file >> u1.phonenum;
-	bool mark=false;//’‚¿Ôµƒmark”√”⁄≈–∂œ «∑Ò“—◊¢≤·π˝
+	bool mark=false;//ËøôÈáåÁöÑmarkÁî®‰∫éÂà§Êñ≠ÊòØÂê¶Â∑≤Ê≥®ÂÜåËøá
 	//if (in_file.good())cout << "!";
 	//if (in_file.fail())cout << "?";
 	while (!in_file.fail())
 	{
 		//cout << strcmp(use.phonenum, u1.phonenum);
 		if (strcmp(use.phonenum, u1.phonenum) == 0) {
-			cout << "∏√ ÷ª˙∫≈“—æ≠◊¢≤·£¨«Îµ«¬º£°" << endl;
-			int flag = 0;//’‚¿Ôµƒflag”√”⁄≈–∂œ√‹¬Î ‰¥Ì∂‡…Ÿ¥Œ
+			cout << "ËØ•ÊâãÊú∫Âè∑Â∑≤ÁªèÊ≥®ÂÜåÔºåËØ∑ÁôªÂΩïÔºÅ" << endl;
+			int flag = 0;//ËøôÈáåÁöÑflagÁî®‰∫éÂà§Êñ≠ÂØÜÁ†ÅËæìÈîôÂ§öÂ∞ëÊ¨°
 			in_file >> u1.pwd;
 			while (flag <= 3) {
-				cout << "«Î ‰»Î√‹¬Î£∫";
+				cout << "ËØ∑ËæìÂÖ•ÂØÜÁ†ÅÔºö";
 				char inpwd[100];
 				cin >> inpwd;
 				if (strcmp(inpwd, exitc) == 0) return 0;
@@ -105,18 +111,18 @@ int main()
 					cout << "\033c";
 					in_file.ignore();
 					getline(in_file,u1.name);
-					cout << "µ«¬º≥…π¶£°ª∂”≠ƒ˙£¨" <<u1.name<<'!'<<endl;
+					cout << "ÁôªÂΩïÊàêÂäüÔºÅÊ¨¢ËøéÊÇ®Ôºå" <<u1.name<<'!'<<endl;
 					for (int i = 0;i < 11;i++)
 						now.phonenum[i] = u1.phonenum[i];
 					now.phonenum[11] = '\0';
 					now.name = u1.name;
 					mark = true;
-					break;//’‚∂Œ”–µ„√´≤°,»Áπ˚ ‰»ÎµƒÍ«≥∆÷–¥¯ø’∏Ò’¶∞Ï£ø£ø11.30
-				}//”√ignore∫Õgetline£°≥…π¶¿≤112.1
+					break;//ËøôÊÆµÊúâÁÇπÊØõÁóÖ,Â¶ÇÊûúËæìÂÖ•ÁöÑÊòµÁß∞‰∏≠Â∏¶Á©∫Ê†ºÂíãÂäûÔºüÔºü11.30
+				}//Áî®ignoreÂíågetlineÔºÅÊàêÂäüÂï¶112.1
 				else {
-					cout << "√‹¬Î≤ª’˝»∑£°";
+					cout << "ÂØÜÁ†Å‰∏çÊ≠£Á°ÆÔºÅ";
 					flag++;
-					cout << "“— ‰¥Ì√‹¬Î" << flag << "¥Œ£¨¥ÌŒÛ≥¨π˝3¥ŒΩ´◊‘∂ØÕÀ≥ˆµ«¬º£°";
+					cout << "Â∑≤ËæìÈîôÂØÜÁ†Å" << flag << "Ê¨°ÔºåÈîôËØØË∂ÖËøá3Ê¨°Â∞ÜËá™Âä®ÈÄÄÂá∫ÁôªÂΩïÔºÅ";
 				}
 			}if (mark)break;
 			if (flag == 4)return 0;
@@ -128,31 +134,31 @@ int main()
 	}
 	in_file.close();
 	if (!mark) {
-		cout << "∏√ ÷ª˙∫≈…–Œ¥◊¢≤·£¨";
-		//“‘œ¬…Ë÷√√‹¬Î
-		int flag;//’‚¿Ôµƒflag”√”⁄≈–∂œ «∑Ò ‰∂‘
+		cout << "ËØ•ÊâãÊú∫Âè∑Â∞öÊú™Ê≥®ÂÜåÔºå";
+		//‰ª•‰∏ãËÆæÁΩÆÂØÜÁ†Å
+		int flag;//ËøôÈáåÁöÑflagÁî®‰∫éÂà§Êñ≠ÊòØÂê¶ËæìÂØπ
 		do {
-			cout << "«Î…Ë÷√√‹¬Î,√‹¬Î”¶∞¸∫¨ ˝◊÷∫Õ¥Û–°–¥◊÷ƒ∏£∫";
+			cout << "ËØ∑ËÆæÁΩÆÂØÜÁ†Å,ÂØÜÁ†ÅÂ∫îÂåÖÂê´Êï∞Â≠óÂíåÂ§ßÂ∞èÂÜôÂ≠óÊØçÔºö";
 			cin >> use.pwd;
 			if (strcmp(use.pwd, exitc) == 0) return 0;			//cout << use.pwd;
 			flag = 0;
 			password(use.pwd, &flag);
 		} while (flag == 0);
 		do {
-			cout << "«Î‘Ÿ¥Œ ‰»Î√‹¬Î£∫";
+			cout << "ËØ∑ÂÜçÊ¨°ËæìÂÖ•ÂØÜÁ†ÅÔºö";
 			char pwdagain[100];
 			cin >> pwdagain;
 			cin.get();
 			if (strcmp(pwdagain, exitc) == 0) return 0;
-			if (strcmp(pwdagain, use.pwd) != 0)cout << "¡Ω¥Œ ‰»Î√‹¬Î≤ª“ª÷¬£°" << endl;
+			if (strcmp(pwdagain, use.pwd) != 0)cout << "‰∏§Ê¨°ËæìÂÖ•ÂØÜÁ†Å‰∏ç‰∏ÄËá¥ÔºÅ" << endl;
 			else break;
 		} while (true);
-		cout << "√‹¬Î…Ë÷√≥…π¶£°" << endl;
-		//“‘œ¬…Ë÷√Í«≥∆
-		cout << "«Î…Ë÷√Í«≥∆£∫";
+		cout << "ÂØÜÁ†ÅËÆæÁΩÆÊàêÂäüÔºÅ" << endl;
+		//‰ª•‰∏ãËÆæÁΩÆÊòµÁß∞
+		cout << "ËØ∑ËÆæÁΩÆÊòµÁß∞Ôºö";
 		getline(cin,use.name);
 		if (use.name == exits) return 0;
-		//“‘œ¬ «—È÷§¬Î
+		//‰ª•‰∏ãÊòØÈ™åËØÅÁ†Å
 			char verify[10];
 			char input[10];
 			do {
@@ -162,41 +168,41 @@ int main()
 					verify[i] = randomlet();
 				}
 				verify[4] = '\0';
-				cout << "«Î ‰»Î—È÷§¬Î" << verify << ":";
+				cout << "ËØ∑ËæìÂÖ•È™åËØÅÁ†Å" << verify << ":";
 				cin >> input;
 				if (strcmp(verify, exitc) == 0) return 0;
-				if (strcmp(verify, input) != 0) cout << "—È÷§¬Î≤ª’˝»∑£¨«Î÷ÿ–¬ ‰»Î£°" << endl;
+				if (strcmp(verify, input) != 0) cout << "È™åËØÅÁ†Å‰∏çÊ≠£Á°ÆÔºåËØ∑ÈáçÊñ∞ËæìÂÖ•ÔºÅ" << endl;
 			} while (strcmp(verify, input) != 0);
 			for (int i = 0;i < 11;i++)
 				now.phonenum[i] = use.phonenum[i];
 			now.phonenum[11] = '\0';
 			now.name = use.name;
-		cout << "\033c";//«Â∆¡≤Ÿ◊˜
-		cout << "◊¢≤·≥…π¶£°ª∂”≠ƒ˙£¨" <<use.name<<'!'<< endl;
-		//“‘œ¬ «∞—–¬”√ªßµƒ–≈œ¢–¥»Î‘≠Œƒº˛
+		cout << "\033c";//Ê∏ÖÂ±èÊìç‰Ωú
+		cout << "Ê≥®ÂÜåÊàêÂäüÔºÅÊ¨¢ËøéÊÇ®Ôºå" <<use.name<<'!'<< endl;
+		//‰ª•‰∏ãÊòØÊääÊñ∞Áî®Êà∑ÁöÑ‰ø°ÊÅØÂÜôÂÖ•ÂéüÊñá‰ª∂
 		ofstream out_file("users.txt", ios::out | ios::app);
 		if (!out_file)exit(-1);
 			out_file <<endl<< use.phonenum << ' ' << use.pwd << ' ' << use.name <<endl;
 		out_file.close();
-	}//“‘œ¬ «µ⁄∂˛≤ø∑÷
+	}//‰ª•‰∏ãÊòØÁ¨¨‰∫åÈÉ®ÂàÜ
 	char choice;
 	do {
-		cout << "∑¢≤ºƒ⁄»›«Î ‰»Î°∞1°±£¨" << endl;
-		cout << "…æ≥˝ƒ⁄»›«Î ‰»Î°∞2°±£¨" << endl;
-		cout << "ªÿ∏¥∆¿¬€«Î ‰»Î°∞3°±£¨" << endl;
-		cout << "≤Èø¥∆‰À˚”√ªßµƒ∑¢≤ºƒ⁄»›«Î ‰»Î°∞4°±£¨" << endl;
-		cout << "≤Èø¥πÿ◊¢”√ªßµƒ∑¢≤ºƒ⁄»›«Î ‰»Î°∞5°±£¨" << endl;
-		cout << "ÕÀ≥ˆ«Î∞¥°∞#°±£∫";
+		cout << "ÂèëÂ∏ÉÂÜÖÂÆπËØ∑ËæìÂÖ•‚Äú1‚ÄùÔºå" << endl;
+		cout << "Âà†Èô§ÂÜÖÂÆπËØ∑ËæìÂÖ•‚Äú2‚ÄùÔºå" << endl;
+		cout << "ÂõûÂ§çËØÑËÆ∫ËØ∑ËæìÂÖ•‚Äú3‚ÄùÔºå" << endl;
+		cout << "Êü•ÁúãÂÖ∂‰ªñÁî®Êà∑ÁöÑÂèëÂ∏ÉÂÜÖÂÆπËØ∑ËæìÂÖ•‚Äú4‚ÄùÔºå" << endl;
+		cout << "Êü•ÁúãÂÖ≥Ê≥®Áî®Êà∑ÁöÑÂèëÂ∏ÉÂÜÖÂÆπËØ∑ËæìÂÖ•‚Äú5‚ÄùÔºå" << endl;
+		cout << "ÈÄÄÂá∫ËØ∑Êåâ‚Äú#‚ÄùÔºö";
 		cin >> choice;
 		cout << "\033c";
 		if (choice == '1')
 		{
-			cout << "«Î ‰»Î“™∑¢≤ºµƒƒ⁄»›£∫" << endl;
+			cout << "ËØ∑ËæìÂÖ•Ë¶ÅÂèëÂ∏ÉÁöÑÂÜÖÂÆπÔºö" << endl;
 			string content;
 			cin.get();
 			getline(cin, content);
 			do {
-				cout << "»∑»œ∑¢≤º¬£ø∑¢≤º«Î∞¥°Æ1°Ø£¨»°œ˚«Î∞¥°Æ2°Ø" << endl;
+				cout << "Á°ÆËÆ§ÂèëÂ∏ÉÂêóÔºüÂèëÂ∏ÉËØ∑Êåâ‚Äò1‚ÄôÔºåÂèñÊ∂àËØ∑Êåâ‚Äò2‚Äô" << endl;
 				cin >> choice;
 				if (choice == '1') {
 					ofstream out_file("contents.txt", ios::out | ios::app);
@@ -208,13 +214,13 @@ int main()
 					out_file << now.phonenum << endl << now.name << endl << time << content << endl;
 					out_file.close();
 					cout << "\033c";
-					cout << "∑¢≤º≥…π¶£°" << endl;
+					cout << "ÂèëÂ∏ÉÊàêÂäüÔºÅ" << endl;
 				}
 				else if (choice == '2') {
-					cout << "\033c" << "“—»°œ˚∑¢≤º" << endl; break;
+					cout << "\033c" << "Â∑≤ÂèñÊ∂àÂèëÂ∏É" << endl; break;
 				}
 				else if (choice == '#')return 0;
-				else cout << "«Î ‰»Î’˝»∑µƒ–Ú∫≈£°£°" << endl;
+				else cout << "ËØ∑ËæìÂÖ•Ê≠£Á°ÆÁöÑÂ∫èÂè∑ÔºÅÔºÅ" << endl;
 			} while (choice != '1' && choice != '2');
 		}
 		else if (choice == '2')
@@ -245,8 +251,8 @@ int main()
 				Node* p;
 				/*for (p = head;p != NULL;p = p->next)
 					cout << p->phone << endl;*/
-				cout << "“‘œ¬ «ƒ˙∑¢≤ºπ˝µƒƒ⁄»›£∫" << endl;
-				int many = 0;//”√”⁄º∆ ˝”√ªß «∑Ò∑¢≤ºπ˝ƒ⁄»›
+				cout << "‰ª•‰∏ãÊòØÊÇ®ÂèëÂ∏ÉËøáÁöÑÂÜÖÂÆπÔºö" << endl;
+				int many = 0;//Áî®‰∫éËÆ°Êï∞Áî®Êà∑ÊòØÂê¶ÂèëÂ∏ÉËøáÂÜÖÂÆπ
 				for (p = head;p != NULL;p = p->next)
 				{
 					//cout << p->phone << endl << p->name << endl << p->time << endl << p->content << endl;
@@ -261,10 +267,10 @@ int main()
 					
 					do {
 						do
-						{cout << "«Î—°‘Ò–Ë“™…æ≥˝µƒƒ⁄»›£® ‰»Î∆‰¥”…œÕ˘œ¬µƒ–Ú∫≈, ‰»Î°Æ0°Ø∑µªÿ, ‰»Î°Æ-1°ØÕÀ≥ˆ≥Ã–Ú£©:";
+						{cout << "ËØ∑ÈÄâÊã©ÈúÄË¶ÅÂà†Èô§ÁöÑÂÜÖÂÆπÔºàËæìÂÖ•ÂÖ∂‰ªé‰∏äÂæÄ‰∏ãÁöÑÂ∫èÂè∑,ËæìÂÖ•‚Äò0‚ÄôËøîÂõû,ËæìÂÖ•‚Äò-1‚ÄôÈÄÄÂá∫Á®ãÂ∫èÔºâ:";
 							many = 0;
 							cin >> ch;
-							if (ch < -1)cout << "«Î ‰»Î’˝»∑µƒ–Ú∫≈£°";
+							if (ch < -1)cout << "ËØ∑ËæìÂÖ•Ê≠£Á°ÆÁöÑÂ∫èÂè∑ÔºÅ";
 							else if (ch == -1)return 0;
 						} while (ch < -1);
 						if (ch == 0) break;
@@ -286,10 +292,10 @@ int main()
 							}
 						}
 						if (pre->next == NULL&&ch!=1) {
-							nul = true;cout << "Œﬁµ⁄" << ch << "∏ˆ∑¢≤ºƒ⁄»›£¨«Î÷ÿ–¬ ‰»Î£°" << endl;
+							nul = true;cout << "Êó†Á¨¨" << ch << "‰∏™ÂèëÂ∏ÉÂÜÖÂÆπÔºåËØ∑ÈáçÊñ∞ËæìÂÖ•ÔºÅ" << endl;
 						}
 						else {
-							cout << " «∑Ò»∑»œ…æ≥˝£ø»∑»œ∞¥°Æ1°Ø£¨»°œ˚∞¥°Æ2°Ø£∫";
+							cout << "ÊòØÂê¶Á°ÆËÆ§Âà†Èô§ÔºüÁ°ÆËÆ§Êåâ‚Äò1‚ÄôÔºåÂèñÊ∂àÊåâ‚Äò2‚ÄôÔºö";
 							cin >> choice;
 							if (choice == '1') {
 								curr->phone = "##";
@@ -304,12 +310,12 @@ int main()
 								out_file << head->phone << endl << head->name << endl << head->time << endl << head->content << endl;
 								out_file.close();
 								cout << "\033c";
-								cout << "…æ≥˝≥…π¶£°" << endl;
+								cout << "Âà†Èô§ÊàêÂäüÔºÅ" << endl;
 								remove(head);goto L;
 							}
 							else if (choice == '2') {
 								remove(head);cout << "\033c";
-								cout << "“—»°œ˚≤Ÿ◊˜" << endl;
+								cout << "Â∑≤ÂèñÊ∂àÊìç‰Ωú" << endl;
 								goto L;
 							}
 							else if (choice == '#')return 0;
@@ -320,7 +326,7 @@ int main()
 					}
 				}
 				else {
-					cout << "ƒ˙ªπ√ª”–∑¢≤ºπ˝ƒ⁄»›≈∂~" << endl;continue;
+					cout << "ÊÇ®ËøòÊ≤°ÊúâÂèëÂ∏ÉËøáÂÜÖÂÆπÂì¶~" << endl;continue;
 				}
 			remove(head);
 		}
@@ -358,7 +364,7 @@ int main()
 				in_file2 >> no;
 			}
 			in_file2.close();
-		L7:cout << "“‘œ¬ «ƒ˙∑¢≤ºπ˝µƒƒ⁄»›÷–¥¯”–∆¿¬€µƒ£∫" << endl;
+		L7:cout << "‰ª•‰∏ãÊòØÊÇ®ÂèëÂ∏ÉËøáÁöÑÂÜÖÂÆπ‰∏≠Â∏¶ÊúâËØÑËÆ∫ÁöÑÔºö" << endl;
 			Node* head = NULL;
 			string nowphone;
 			string nowname;
@@ -385,7 +391,7 @@ int main()
 			in_file.close();
 			comments* p = NULL;comments* pre = NULL;comments* curr = NULL;bool nul = false;bool bo = false;
 			Node* q = NULL;
-			int many = 0,j=1;//”√”⁄º∆ ˝
+			int many = 0,j=1;//Áî®‰∫éËÆ°Êï∞
 			for (p = head1;p != NULL;p = p->next)
 			{
 				bo = false;
@@ -400,15 +406,15 @@ int main()
 			if (many != 0) {
 				do {
 					do {
-						cout << "«Î—°‘Òƒ˙œÎ“™≤Èø¥∆¿¬€µƒ∑¢≤ºƒ⁄»›£® ‰»Î¥”…œÕ˘œ¬µƒ–Ú∫≈£¨ ‰»Î°Æ0°Ø∑µªÿ£¨ ‰»Î°Æ-1°ØÕÀ≥ˆ≥Ã–Ú£©£∫";
+						cout << "ËØ∑ÈÄâÊã©ÊÇ®ÊÉ≥Ë¶ÅÊü•ÁúãËØÑËÆ∫ÁöÑÂèëÂ∏ÉÂÜÖÂÆπÔºàËæìÂÖ•‰ªé‰∏äÂæÄ‰∏ãÁöÑÂ∫èÂè∑ÔºåËæìÂÖ•‚Äò0‚ÄôËøîÂõûÔºåËæìÂÖ•‚Äò-1‚ÄôÈÄÄÂá∫Á®ãÂ∫èÔºâÔºö";
 						many = 0;
 						cin >> ch;
-						if (ch < -1)cout << "«Î ‰»Î’˝»∑µƒ–Ú∫≈£°";
+						if (ch < -1)cout << "ËØ∑ËæìÂÖ•Ê≠£Á°ÆÁöÑÂ∫èÂè∑ÔºÅ";
 						else if (ch == 0)break;
 						else if (ch == -1)return 0;
 					} while (ch < -1);
 					if (ch == 0) {
-						cout << "\033c"<<"“—∑µªÿ"<<endl;break;
+						cout << "\033c"<<"Â∑≤ËøîÂõû"<<endl;break;
 					}
 					pre = head1;
 					if (head1->phone == now.phonenum && ch == 1)
@@ -446,11 +452,11 @@ int main()
 							if (pre->next->phone == now.phonenum && pre->next->no == 1) { i++;curr = pre->next; }
 							if (i <= ch)pre = pre->next;
 						}
-					}//’“µΩµ⁄ch∏ˆ”–∆¿¬€µƒƒ⁄»›,“—”√pre∫Õcurr£¨curr÷∏œÚ–Ë“™ªÿ∏¥∆¿¬€µƒÃ˚◊”*/
+					}//ÊâæÂà∞Á¨¨ch‰∏™ÊúâËØÑËÆ∫ÁöÑÂÜÖÂÆπ,Â∑≤Áî®preÂíåcurrÔºåcurrÊåáÂêëÈúÄË¶ÅÂõûÂ§çËØÑËÆ∫ÁöÑÂ∏ñÂ≠ê*/
 					
 					if (pre->next == NULL&&ch!=1) {
 						nul = true;
-						cout << "Œﬁµ⁄" << ch << "∏ˆ∑¢≤ºƒ⁄»›£¨«Î÷ÿ–¬ ‰»Î£°" << endl;
+						cout << "Êó†Á¨¨" << ch << "‰∏™ÂèëÂ∏ÉÂÜÖÂÆπÔºåËØ∑ÈáçÊñ∞ËæìÂÖ•ÔºÅ" << endl;
 					}
 					else {
 						cout << "\033c";
@@ -465,14 +471,14 @@ int main()
 						do
 						{
 							do {
-								cout << "«Î ‰»Î–Ë“™ªÿ∏¥µƒ∆¿¬€–Ú∫≈(∑µªÿ∞¥'0',ÕÀ≥ˆ∞¥'-1')£∫";
+								cout << "ËØ∑ËæìÂÖ•ÈúÄË¶ÅÂõûÂ§çÁöÑËØÑËÆ∫Â∫èÂè∑(ËøîÂõûÊåâ'0',ÈÄÄÂá∫Êåâ'-1')Ôºö";
 								cin >> ch;
-								if (ch < -1)cout << "«Î ‰»Î’˝»∑µƒ±‡∫≈£°" << endl;
+								if (ch < -1)cout << "ËØ∑ËæìÂÖ•Ê≠£Á°ÆÁöÑÁºñÂè∑ÔºÅ" << endl;
 								else if (ch == -1)return 0;
 							} while (ch < -1);
 							comments* q = NULL;p = head1;
 							if (ch == 0) {
-							cout << "\033c" << "“—∑µªÿ" << endl;goto L7;
+							cout << "\033c" << "Â∑≤ËøîÂõû" << endl;goto L7;
 								}
 							else if (ch == 1&&head1->phone==now.phonenum)q = head1;
 							else {
@@ -482,16 +488,16 @@ int main()
 									}
 								}
 								q = p->next;
-							}//q «“™ªÿ∏¥µƒƒ«Ãı∆¿¬€
-							if (p->next == NULL&&ch!=1) { null = true;cout << "Œﬁµ⁄" << ch << "Ãı∆¿¬€£¨«Î÷ÿ–¬ ‰»Î£°" << endl; }
+							}//qÊòØË¶ÅÂõûÂ§çÁöÑÈÇ£Êù°ËØÑËÆ∫
+							if (p->next == NULL&&ch!=1) { null = true;cout << "Êó†Á¨¨" << ch << "Êù°ËØÑËÆ∫ÔºåËØ∑ÈáçÊñ∞ËæìÂÖ•ÔºÅ" << endl; }
 							else {  
-								cout << "«Î ‰»Îªÿ∏¥µƒƒ⁄»›£∫";
+								cout << "ËØ∑ËæìÂÖ•ÂõûÂ§çÁöÑÂÜÖÂÆπÔºö";
 								string reply;
 								cin.get();
 								getline(cin, reply);
-								string r = "   //≤©÷˜ªÿ∏¥£∫";
+								string r = "   //Âçö‰∏ªÂõûÂ§çÔºö";
 								do {
-									cout << "»∑»œªÿ∏¥¬£ø£®»∑»œ∞¥°Æ1°Ø£¨»°œ˚∞¥°Æ2°Ø£©£∫";
+									cout << "Á°ÆËÆ§ÂõûÂ§çÂêóÔºüÔºàÁ°ÆËÆ§Êåâ‚Äò1‚ÄôÔºåÂèñÊ∂àÊåâ‚Äò2‚ÄôÔºâÔºö";
 									cin >> choice;
 									if (choice == '1') {
 									q->comment += (r+reply);
@@ -500,19 +506,19 @@ int main()
 											out_file << p->no << ' ' << p->phone << endl << p->content << endl << p->name << endl << p->comment << endl;
 										out_file.close();
 										cout << "\033c";
-										cout << "ªÿ∏¥≥…π¶£°" << endl;
+										cout << "ÂõûÂ§çÊàêÂäüÔºÅ" << endl;
 										remove(head1);goto L2;
 									}
-									else if (choice == '2') { cout << "\033c";cout << "“—»°œ˚≤Ÿ◊˜" << endl;remove(head1);goto L2; }
+									else if (choice == '2') { cout << "\033c";cout << "Â∑≤ÂèñÊ∂àÊìç‰Ωú" << endl;remove(head1);goto L2; }
 									else if (choice == '#')return 0;
-									else if (choice >= '3' || choice <= '0')cout << "«Î ‰»Î’˝»∑µƒ—°œÓ£°";
+									else if (choice >= '3' || choice <= '0')cout << "ËØ∑ËæìÂÖ•Ê≠£Á°ÆÁöÑÈÄâÈ°πÔºÅ";
 								} while (choice >= '3' || choice <= '0');
 							}
 						} while (null);
 					}
 				} while (nul);
 			}
-			else { cout << "ƒ˙∑¢≤ºµƒƒ⁄»›ªπ√ª”–∆¿¬€≈∂~" << endl;continue; }
+			else { cout << "ÊÇ®ÂèëÂ∏ÉÁöÑÂÜÖÂÆπËøòÊ≤°ÊúâËØÑËÆ∫Âì¶~" << endl;continue; }
 		}
 		else if (choice == '4') {
 			Node* head = NULL;
@@ -539,7 +545,7 @@ int main()
 				in_file >> nowphone;
 			}
 			in_file.close();
-			L3:cout << "“‘œ¬ «À˘”–”√ªß∑¢≤ºµƒƒ⁄»›£∫" << endl;Node* p;
+			L3:cout << "‰ª•‰∏ãÊòØÊâÄÊúâÁî®Êà∑ÂèëÂ∏ÉÁöÑÂÜÖÂÆπÔºö" << endl;Node* p;
 			int j = 1;
 			for (p = head;p != NULL;p = p->next)
 			{
@@ -549,9 +555,9 @@ int main()
 			}int ch;bool nul = false;
 			do{
 			do {
-				cout << "«Î ‰»Î–Ë“™≤Èø¥ƒ⁄»›µƒ±‡∫≈£® ‰»Î∆‰¥”…œÕ˘œ¬µƒ–Ú∫≈, ‰»Î°Æ0°Ø∑µªÿ, ‰»Î°Æ-1°ØÕÀ≥ˆ≥Ã–Ú£©£∫";
+				cout << "ËØ∑ËæìÂÖ•ÈúÄË¶ÅÊü•ÁúãÂÜÖÂÆπÁöÑÁºñÂè∑ÔºàËæìÂÖ•ÂÖ∂‰ªé‰∏äÂæÄ‰∏ãÁöÑÂ∫èÂè∑,ËæìÂÖ•‚Äò0‚ÄôËøîÂõû,ËæìÂÖ•‚Äò-1‚ÄôÈÄÄÂá∫Á®ãÂ∫èÔºâÔºö";
 				cin >> ch;
-				if (ch < -1)cout << "«Î ‰»Î’˝»∑µƒ–Ú∫≈£°";
+				if (ch < -1)cout << "ËØ∑ËæìÂÖ•Ê≠£Á°ÆÁöÑÂ∫èÂè∑ÔºÅ";
 				else if (ch == 0) {
 					cout << "\033c";break;
 				}
@@ -577,12 +583,12 @@ int main()
 				}
 			}
 			if (pre->next == NULL&&ch!=1) {
-				nul = true;cout << "Œﬁµ⁄" << ch << "∏ˆ∑¢≤ºƒ⁄»›£¨«Î÷ÿ–¬ ‰»Î£°" << endl;
+				nul = true;cout << "Êó†Á¨¨" << ch << "‰∏™ÂèëÂ∏ÉÂÜÖÂÆπÔºåËØ∑ÈáçÊñ∞ËæìÂÖ•ÔºÅ" << endl;
 			}
 			else {
 				cout << "\033c";
 				cout << curr->phone << endl << curr->name << endl << curr->content << endl;
-				node u1;//À‰»ª «¡¥±Ìµ´Œ“√ª”–∞—À¸µ±¡¥±Ì”√π˛π˛π˛ /∫√£¨…æ¡Ànext
+				node u1;//ËôΩÁÑ∂ÊòØÈìæË°®‰ΩÜÊàëÊ≤°ÊúâÊääÂÆÉÂΩìÈìæË°®Áî®ÂìàÂìàÂìà /Â•ΩÔºåÂà†‰∫Ünext
 				int preno=0;
 				ifstream in_file("comments.txt", ios::in);
 				in_file >> u1.no;
@@ -600,10 +606,10 @@ int main()
 					in_file >> u1.no;
 				}
 				in_file.close();
-				cout << "ƒ˙ «∑Ò“™∆¿¬€£ø ««Î∞¥°Æ1°Ø£¨∑Ò«Î∞¥°Æ2°Ø£∫";
+				cout << "ÊÇ®ÊòØÂê¶Ë¶ÅËØÑËÆ∫ÔºüÊòØËØ∑Êåâ‚Äò1‚ÄôÔºåÂê¶ËØ∑Êåâ‚Äò2‚ÄôÔºö";
 				cin >> choice;
 				if (choice == '1') {
-					cout << "«Î ‰»Î∆¿¬€ƒ⁄»›£∫";
+					cout << "ËØ∑ËæìÂÖ•ËØÑËÆ∫ÂÜÖÂÆπÔºö";
 					string comment;
 					cin.get();
 					getline(cin, comment);
@@ -613,7 +619,7 @@ int main()
 					out_file << no << ' ' << curr->phone << endl << curr->content << endl << now.name << endl << comment << endl << endl;
 					out_file.close();
 					cout << "\033c";
-					cout << "∆¿¬€≥…π¶£°" << endl;
+					cout << "ËØÑËÆ∫ÊàêÂäüÔºÅ" << endl;
 					int m = 0;
 					follow f1;
 					ifstream in_file1("follows.txt", ios::in);
@@ -629,24 +635,24 @@ int main()
 						in_file1 >> f1.userphone;
 					}in_file1.close();
 					if (m == 0) {
-						cout << " «∑Òπÿ◊¢∏√”√ªß£ø(πÿ◊¢«Î∞¥°Æ1°Ø£¨≤ªπÿ◊¢«Î∞¥°Æ2°Ø£©£∫";
+						cout << "ÊòØÂê¶ÂÖ≥Ê≥®ËØ•Áî®Êà∑Ôºü(ÂÖ≥Ê≥®ËØ∑Êåâ‚Äò1‚ÄôÔºå‰∏çÂÖ≥Ê≥®ËØ∑Êåâ‚Äò2‚ÄôÔºâÔºö";
 						cin >> choice;
 						if (choice == '1') {
 							ofstream out_file("follows.txt", ios::out | ios::app);
 							out_file << now.phonenum << endl << curr->phone << endl << curr->name << endl;
 							out_file.close();
 							cout << "\033c";
-							cout << "πÿ◊¢≥…π¶£°" << endl;
+							cout << "ÂÖ≥Ê≥®ÊàêÂäüÔºÅ" << endl;
 							goto L3;
 						}
 						else if (choice == '2') {
-							cout << "\033c" << "ƒ˙—°‘Ò≤ªπÿ◊¢£¨“—∑µªÿ" << endl;goto L3;
+							cout << "\033c" << "ÊÇ®ÈÄâÊã©‰∏çÂÖ≥Ê≥®ÔºåÂ∑≤ËøîÂõû" << endl;goto L3;
 						}
 						else if (choice == '#')return 0;
 					}
-					else { cout << "ƒ˙“—πÿ◊¢∏√”√ªß£¨“—∑µªÿ" << endl;goto L3; }
+					else { cout << "ÊÇ®Â∑≤ÂÖ≥Ê≥®ËØ•Áî®Êà∑ÔºåÂ∑≤ËøîÂõû" << endl;goto L3; }
 				}
-				else { cout << "\033c" << "“—∑µªÿ"<<endl;goto L3; }
+				else { cout << "\033c" << "Â∑≤ËøîÂõû"<<endl;goto L3; }
 			}
 			} while (nul);
 		remove(head);}
@@ -670,8 +676,8 @@ int main()
 				head = p;
 				in_file >> f1.userphone;
 			}in_file.close();
-			if (mark == 0)cout << "ƒ˙ªπ√ª”–πÿ◊¢µƒ”√ªß≈∂£¨øÏ»•πÿ◊¢∞…~"<<endl;
-			else {L5:cout << "“‘œ¬ «ƒ˙πÿ◊¢µƒ”√ªß£∫"<<endl;
+			if (mark == 0)cout << "ÊÇ®ËøòÊ≤°ÊúâÂÖ≥Ê≥®ÁöÑÁî®Êà∑Âì¶ÔºåÂø´ÂéªÂÖ≥Ê≥®Âêß~"<<endl;
+			else {L5:cout << "‰ª•‰∏ãÊòØÊÇ®ÂÖ≥Ê≥®ÁöÑÁî®Êà∑Ôºö"<<endl;
 				follow* p = head;int j = 1;
 				for (;p != NULL;p = p->next)
 				{
@@ -679,12 +685,12 @@ int main()
 				}int ch;bool nu = false;
 				do {
 					do {
-						cout << "«Î—°‘Òƒ˙œÎ“™≤Èø¥µƒ”√ªß–Ú∫≈£® ‰»Î∆‰¥”…œÕ˘œ¬µƒ–Ú∫≈, ‰»Î°Æ0°Ø∑µªÿ, ‰»Î°Æ-1°ØÕÀ≥ˆ≥Ã–Ú£©£∫";
+						cout << "ËØ∑ÈÄâÊã©ÊÇ®ÊÉ≥Ë¶ÅÊü•ÁúãÁöÑÁî®Êà∑Â∫èÂè∑ÔºàËæìÂÖ•ÂÖ∂‰ªé‰∏äÂæÄ‰∏ãÁöÑÂ∫èÂè∑,ËæìÂÖ•‚Äò0‚ÄôËøîÂõû,ËæìÂÖ•‚Äò-1‚ÄôÈÄÄÂá∫Á®ãÂ∫èÔºâÔºö";
 						cin >> ch;
-						if (ch < -1)cout << "«Î ‰»Î’˝»∑µƒ–Ú∫≈£°";
+						if (ch < -1)cout << "ËØ∑ËæìÂÖ•Ê≠£Á°ÆÁöÑÂ∫èÂè∑ÔºÅ";
 					} while (ch < -1);
 					if (ch == 0) {
-						cout << "\033c"<<"“—∑µªÿ"<<endl;break;
+						cout << "\033c"<<"Â∑≤ËøîÂõû"<<endl;break;
 					}
 					else if (ch == -1)return 0;
 					else {
@@ -704,10 +710,10 @@ int main()
 								}
 							}
 						}
-						if (pre->next == NULL&&ch!=1) { cout << "Œﬁµ⁄" << ch << "∏ˆπÿ◊¢”√ªß£¨«Î÷ÿ–¬ ‰»Î£°" << endl;nu = true; }
+						if (pre->next == NULL&&ch!=1) { cout << "Êó†Á¨¨" << ch << "‰∏™ÂÖ≥Ê≥®Áî®Êà∑ÔºåËØ∑ÈáçÊñ∞ËæìÂÖ•ÔºÅ" << endl;nu = true; }
 						else {
 							cout << "\033c";
-							cout << "“‘œ¬ «∏√”√ªßÀ˘”–µƒ∑¢≤ºƒ⁄»›£∫" << endl;
+							cout << "‰ª•‰∏ãÊòØËØ•Áî®Êà∑ÊâÄÊúâÁöÑÂèëÂ∏ÉÂÜÖÂÆπÔºö" << endl;
 							Node fo;Node* h=NULL;
 							ifstream in_file1("contents.txt", ios::in);
 							in_file1 >> fo.phone;
@@ -734,12 +740,12 @@ int main()
 							}bool n = false;
 							do {
 								do {
-									cout << "«Î—°‘ÒœÎ“™∆¿¬€µƒƒ⁄»›–Ú∫≈£® ‰»Î∆‰–Ú∫≈, ‰»Î°Æ0°Ø∑µªÿ, ‰»Î°Æ-1°ØÕÀ≥ˆ≥Ã–Ú£©";
+									cout << "ËØ∑ÈÄâÊã©ÊÉ≥Ë¶ÅËØÑËÆ∫ÁöÑÂÜÖÂÆπÂ∫èÂè∑ÔºàËæìÂÖ•ÂÖ∂Â∫èÂè∑,ËæìÂÖ•‚Äò0‚ÄôËøîÂõû,ËæìÂÖ•‚Äò-1‚ÄôÈÄÄÂá∫Á®ãÂ∫èÔºâ";
 									cin >> ch;
-									if (ch < -1)cout << "«Î ‰»Î’˝»∑µƒ–Ú∫≈£°";
+									if (ch < -1)cout << "ËØ∑ËæìÂÖ•Ê≠£Á°ÆÁöÑÂ∫èÂè∑ÔºÅ";
 								} while (ch < -1);
 								if (ch == 0) {
-									cout << "\033c";cout << "“—∑µªÿ"<<endl;goto L5;
+									cout << "\033c";cout << "Â∑≤ËøîÂõû"<<endl;goto L5;
 								}
 								else if (ch == -1) return 0;
 								else {
@@ -761,7 +767,7 @@ int main()
 											}
 										}
 									}if (pre1->next == NULL&&ch!=1) {
-										n = true;cout << "Œﬁµ⁄" << ch << "∏ˆ∑¢≤ºƒ⁄»›£¨«Î÷ÿ–¬ ‰»Î£°" << endl;
+										n = true;cout << "Êó†Á¨¨" << ch << "‰∏™ÂèëÂ∏ÉÂÜÖÂÆπÔºåËØ∑ÈáçÊñ∞ËæìÂÖ•ÔºÅ" << endl;
 									}
 									else {
 										cout << "\033c";
@@ -784,7 +790,7 @@ int main()
 											in_file >> u1.no;
 										}
 										in_file.close();
-										cout << "«Î ‰»Î∆¿¬€ƒ⁄»›£∫";
+										cout << "ËØ∑ËæìÂÖ•ËØÑËÆ∫ÂÜÖÂÆπÔºö";
 										string comment;
 										cin.get();
 										getline(cin, comment);
@@ -794,7 +800,7 @@ int main()
 										out_file << no << ' ' << current->phone << endl << current->content << endl << now.name << endl << comment << endl << endl;
 										out_file.close();
 										cout << "\033c";
-										cout << "∆¿¬€≥…π¶£°" << endl;
+										cout << "ËØÑËÆ∫ÊàêÂäüÔºÅ" << endl;
 										goto L4;
 									}
 								}
@@ -805,7 +811,7 @@ int main()
 			}
 		}
 		else if (choice == '#')return 0;
-		else  cout << "«Î ‰»Î’˝»∑µƒ–Ú∫≈£°£°" << endl; 
+		else  cout << "ËØ∑ËæìÂÖ•Ê≠£Á°ÆÁöÑÂ∫èÂè∑ÔºÅÔºÅ" << endl; 
 	}
 	while (choice!= '#');
 	return 0;

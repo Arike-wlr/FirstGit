@@ -375,15 +375,22 @@ svg{display:block}
 .tm-title{margin-left:10px;font-size:11.5px;color:#7b8194;font-family:"Cascadia Mono",Consolas,monospace}
 .tm-close{margin-left:auto;color:#5c6274;padding:4px 7px;border-radius:6px;font-size:15px;line-height:1}
 .tm-close:hover{background:#23262f;color:#c8ccd8}
-.tm-body{
-  margin:0;padding:18px 20px 22px;max-height:min(74vh,680px);overflow:auto;
+.tm-screen{
+  height:min(54vh,440px);overflow:auto;padding:16px 20px;
   font-family:"Cascadia Mono",Consolas,"Courier New",monospace;font-size:12.5px;line-height:1.85;
-  color:#c9d1e0;white-space:pre-wrap;
+  color:#c9d1e0;
 }
-.tm-body .dim{color:#5c6274}
-.tm-body .ok{color:#7ee2a8}
-.tm-body .hl{color:#ffb86b}
-.tm-body .usr{color:#8ab4ff}
+.tm-line{white-space:pre-wrap;word-break:break-word}
+.tm-line.echo{color:#8ab4ff}
+.tm-line.ok{color:#7ee2a8}
+.tm-line.err{color:#ff9d8a}
+.tm-line.dim{color:#6b7284}
+.tm-line.q{color:#9fabc2}
+.tm-foot{display:flex;align-items:center;gap:8px;padding:11px 18px;border-top:1px solid #23262f;background:#15181e}
+.tm-prompt{color:#ffb86b;font-family:"Cascadia Mono",Consolas,monospace;font-size:12.5px;white-space:nowrap;flex:none}
+.tm-input{flex:1;min-width:0;background:transparent;border:0;outline:none;color:#e8eefc;
+  font-family:"Cascadia Mono",Consolas,monospace;font-size:12.5px;caret-color:#ffb86b}
+.tm-input::placeholder{color:#4a505f}
 
 /* 提示 */
 .toasts{position:fixed;left:50%;bottom:36px;transform:translateX(-50%);z-index:120;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}
@@ -461,7 +468,7 @@ svg{display:block}
           </div>
         </div>
         <h1>欢迎您来到<br><em>单机版小红书</em>。</h1>
-        <p class="art-desc">没有服务器，也没有数据库。登录、发帖、评论、关注，全靠四个 txt 文件撑着——原本只活在控制台里，现在给它接了一层界面。</p>
+        <p class="art-desc">没有框架，也没有 ORM。登录、发帖、评论、关注全交给一个 C++ 写的后端，数据落在一个 SQLite 文件里——四个 txt 只在第一次启动时喂一口。</p>
         <div class="art-menu">
           <span><b>1</b>发布内容</span>
           <span><b>2</b>删除自己的</span>
@@ -483,9 +490,7 @@ svg{display:block}
             <p>西瓜大，西瓜甜，西瓜不沙不要钱！（？</p>
           </div>
         </div>
-        <div class="art-foot">
-          <span>14 位用户</span><span>13 条动态</span><span>32 条评论</span><span>0 个数据库</span>
-        </div>
+        <div class="art-foot" id="artFoot"></div>
       </div>
     </div>
     <div class="login-panel">
@@ -601,55 +606,11 @@ svg{display:block}
         <span class="tm-title">C:\Users\HUAWEI\Homework\x64\Debug\Homework.exe</span>
         <button class="tm-close" data-act="closeTerm">&times;</button>
       </div>
-      <pre class="tm-body"><span class="dim">// main.cpp · 2024 年 C++ 课程大作业 · 数据全在 Homework 文件夹的四个 txt 里</span>
-<span class="ok">欢迎您来到单机版小红书，请登录/注册！</span>
-<span class="dim">（想退出程序，可以随时输入 # 退出）</span>
-
-请输入手机号：<span class="usr">13319280516</span>
-该手机号已注册，请输入密码：
-请输入密码：<span class="dim">*********</span>
-
-<span class="ok">登录成功！欢迎回来，宁瑾泱！</span>
-
-请选择操作：
-  输入「1」发布内容
-  输入「2」删除自己发布的内容
-  输入「3」回复别人给我的评论
-  输入「4」查看所有用户发送的内容并评论
-  输入「5」查看已注册用户发送的内容并评论
-  输入「#」退出
-
-<span class="hl">&gt; 4</span>
-
-以下是所有用户发送的内容：
-
-1  宁瑾凌
-Sat Dec  7 22:34:19 2024
-宁瑾诚你家有个大一的小登总喜欢掀我棺材板！！！……
-
-2  宁沧淼
-Mon Dec  9 23:02:15 2024
-我们是冠军！！蝉联冠军的第16年！！
-
-3  尚明华
-Wed Dec 11 22:22:07 2024
-呵，除了我们五个，谁配争这TOP3的名号！！
-
-<span class="dim">请输入你要查看内容的编号（……输入‘0’返回，‘-1’退出程序）：</span>
-<span class="hl">&gt; 3</span>
-
-尚明华
-呵，除了我们五个，谁配争这TOP3的名号！！
-1 尚清源
-呵，痴心妄想！
-2 江秋实
-呵，痴心妄想！
-3 安珂
-呵，痴心妄想！
-
-<span class="dim">……（共 14 位用户、19 条动态记录，其中 6 条已被标记为 ##）</span>
-
-<span class="ok">// 以上，就是这层界面背后的全部逻辑。</span></pre>
+      <div class="tm-screen" id="termScreen"></div>
+      <div class="tm-foot">
+        <span class="tm-prompt" id="termPrompt">&gt;</span>
+        <input class="tm-input" id="termInput" autocomplete="off" spellcheck="false" placeholder="输入后回车">
+      </div>
     </div>
   </div>
 
@@ -951,7 +912,17 @@ function closeConfirm(){ el('#confirmModal').classList.remove('on'); cfCallback 
    ========================================================= */
 let loginState = { step:'phone', phone:'', name:'', pwd:'', tries:0, code:'' };
 
+function renderArtStats(){
+  const af = el('#artFoot');
+  if (!af) return;
+  af.innerHTML = `<span>${S.users.length} 位用户</span>`
+    + `<span>${S.posts.length} 条动态</span>`
+    + `<span>${S.comments.length} 条评论</span>`
+    + `<span>${API ? '1 个 SQLite 库' : '0 个数据库'}</span>`;
+}
+
 function renderLogin(){
+  renderArtStats();
   const box = el('#loginStep');
   if (loginState.step === 'phone'){
     box.innerHTML = `
@@ -1051,17 +1022,12 @@ function loginErr(msg){ const e = el('#loginErr'); if (e) e.textContent = msg; }
 function validPhone(p){
   if (!/^\d{11}$/.test(p)) return false;
   if (p[0] !== '1') return false;
-  const s = p[1], t = p[2];
-  if (!'34578'.includes(s)) return false;
-  if (s === '4' && !'79'.includes(t)) return false;
-  if (s === '5' && t === '4') return false;
-  if (s === '7' && !'37'.includes(t)) return false;
-  if (s === '8' && !'015689'.includes(t)) return false;
+  if (p[1] < '3' || p[1] > '9') return false;
   return true;
 }
 /* 原 function.cpp 里的密码校验规则 */
 function validPwd(p){
-  if (p.length < 8) return '密码长度必须大于 8 位';
+  if (p.length < 8) return '密码长度至少 8 位';
   if (!/^[A-Za-z0-9]+$/.test(p)) return '密码含有非法字符';
   if (!/\d/.test(p)) return '密码中必须有数字';
   if (!/[A-Z]/.test(p)) return '密码中必须有大写字母';
@@ -1270,7 +1236,7 @@ function currentPosts(){
 }
 
 function postHTML(p, i){
-  const m = me();
+  const m = me() || { phone:'', name:'' };
   const mine = p.phone === m.phone;
   const n = commentCount(p.id);
   const following = isFollowing(p.phone);
@@ -1348,14 +1314,13 @@ function renderRight(){
     </div>
     <div class="card about">
       <h3>关于这个项目</h3>
-      <p>2024 年 C++ 课程大作业：没有框架、没有数据库，四张 txt 就是全部后端，链表存动态、评论、关注。这层 Web 版把它搬进了 SQLite，四张表 <code>users / posts / comments / follows</code>；txt 只在首次启动时导入一次，之后只读。原始 <code>contents.txt</code> 的 ${BACKEND.files ? BACKEND.files.contents : 19} 条记录里，有 ${(BACKEND.files ? BACKEND.files.contents : 19) - S.posts.length} 条被原程序打成了 <code>##</code> 墓碑，这里存成 <code>deleted=1</code>。</p>
+      <p>2024 年 C++ 课程大作业：没有框架、没有数据库，四张 txt 就是全部后端。这层 Web 版把它搬进了 SQLite，四张表 <code>users / posts / comments / follows</code>；txt 只在首次启动时导入一次，之后只读。现在 <code>posts</code> 表共 ${BACKEND.files ? BACKEND.files.contents : 13} 行，其中 ${(BACKEND.files ? BACKEND.files.contents : 13) - S.posts.length} 行是 <code>deleted=1</code>（含原程序留下的 <code>##</code> 墓碑），查询时自动过滤。</p>
       <div class="stat-grid">
         <div class="stat-cell"><b>${S.users.length}</b><span>注册用户</span></div>
         <div class="stat-cell"><b>${S.posts.length}</b><span>动态</span></div>
         <div class="stat-cell"><b>${S.comments.length}</b><span>评论</span></div>
         <div class="stat-cell"><b>${S.follows.length}</b><span>关注关系</span></div>
       </div>
-      <button class="btn-line" data-act="terminal">看看原来的控制台</button>
       <button class="reset-btn" data-act="reset">${API ? '重新从数据库加载' : '重置为原始数据'}</button>
     </div>
     <div class="foot-note">
@@ -1385,7 +1350,7 @@ function closeDrawer(){
   el('#replyTo').classList.remove('on');
 }
 function commentHTML(c){
-  const m = me();
+  const m = me() || { phone:'', name:'' };
   const rs = c.replies || [];
   const mine = c.phone === m.phone;
   const post = S.posts.find(x => x.id === c.postId);
@@ -1592,7 +1557,7 @@ document.addEventListener('click', async e => {
       break;
     }
     case 'confirmNo': closeConfirm(); break;
-    case 'terminal': el('#termModal').classList.add('on'); break;
+    case 'terminal': openTerminal(); break;
     case 'closeTerm': el('#termModal').classList.remove('on'); break;
     case 'reset': {
       if (API){
@@ -1672,6 +1637,14 @@ el('#cmtInput').addEventListener('input', function(){
 el('#cmtInput').addEventListener('keydown', e => {
   if (e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); sendComment(); }
 });
+el('#termInput').addEventListener('keydown', function(e){
+  if (e.key === 'Enter'){
+    const v = this.value;
+    if (T.step === 'idle' || T.step === 'done') return;
+    termSubmit(v);
+  }
+});
+
 el('#search').addEventListener('input', function(){
   query = this.value.trim();
   renderFeed();
@@ -1685,11 +1658,342 @@ document.addEventListener('keydown', e => {
   }
 });
 
+
+/* =========================================================
+   可交互控制台：真的能敲命令，读写同一套后端数据
+   ========================================================= */
+const T = { step:'idle', prompt:'', phone:'', user:null, tries:0, data:{}, code:'' };
+
+function tw(text, cls){
+  const box = el('#termScreen');
+  const d = document.createElement('div');
+  d.className = 'tm-line' + (cls ? ' ' + cls : '');
+  d.textContent = text;
+  box.appendChild(d);
+  box.scrollTop = box.scrollHeight;
+}
+function tAsk(step, question){
+  T.step = step;
+  T.prompt = question;
+  if (question) tw(question, 'q');
+  el('#termPrompt').textContent = '>';
+  const i = el('#termInput');
+  i.value = '';
+  i.disabled = false;
+  i.focus();
+}
+function tEnd(msg){
+  if (msg) tw(msg, 'ok');
+  tw('已退出控制台。', 'dim');
+  T.step = 'done';
+  el('#termPrompt').textContent = '';
+  const i = el('#termInput');
+  i.disabled = true;
+  i.value = '';
+}
+function tMenu(){
+  tw('');
+  tw('1 发布   2 删除   3 回复   4 浏览   5 关注   # 退出', 'dim');
+  tAsk('menu', '请选择：');
+}
+function tShowMine(){
+  const mine = S.posts.filter(p => p.phone === T.user.phone);
+  T.data.mine = mine;
+  if (!mine.length){ tw('您还没有发布过内容哦~', 'dim'); return tMenu(); }
+  tw('');
+  tw('以下是您发布过的内容：');
+  mine.forEach((p, i) => { tw((i + 1) + '  ' + p.name + '  ' + fmtTime(p.time)); tw('   ' + p.content); tw(''); });
+  return tAsk('delPick', '请选择需要删除的内容（输入序号，0 返回）：');
+}
+function tShowReplyable(){
+  const mine = S.posts.filter(p => p.phone === T.user.phone && S.comments.some(c => c.postId === p.id));
+  T.data.replyPosts = mine;
+  if (!mine.length){ tw('您发布的内容还没有评论哦~', 'dim'); return tMenu(); }
+  tw('');
+  tw('以下是您发布过的内容中带有评论的：');
+  mine.forEach((p, i) => { tw((i + 1) + '  ' + p.name); tw('   ' + p.content); tw(''); });
+  return tAsk('replyPick', '请选择（0 返回）：');
+}
+function tShowAll(){
+  T.data.all = S.posts;
+  if (!S.posts.length){ tw('还没有人发布内容哦~', 'dim'); return tMenu(); }
+  tw('');
+  tw('以下是所有用户发布的内容：');
+  S.posts.forEach((p, i) => { tw((i + 1) + '  ' + p.name + '  ' + fmtTime(p.time)); tw('   ' + p.content); tw(''); });
+  return tAsk('browsePick', '请输入需要查看内容的编号（0 返回）：');
+}
+function tShowFollows(){
+  const fs = S.follows.filter(f => f.userphone === T.user.phone);
+  T.data.follows = fs;
+  if (!fs.length){ tw('您还没有关注的用户哦，快去关注吧~', 'dim'); return tMenu(); }
+  tw('');
+  tw('以下是您关注的用户：');
+  fs.forEach((f, i) => tw((i + 1) + '  ' + maskPhone(f.fophone) + '  ' + f.foname));
+  return tAsk('folPick', '请选择您想要查看的用户编号（0 返回）：');
+}
+
+function termBoot(){
+  el('#termScreen').innerHTML = '';
+  T.step = 'idle'; T.user = null; T.tries = 0; T.data = {}; T.code = '';
+  const i = el('#termInput');
+  i.disabled = false; i.value = '';
+  tw('单机版小红书 · 控制台模式');
+  tw('和网页共用同一份数据，敲的每一下都会写回后端。', 'dim');
+  tw('');
+  if (!API){
+    tw('没有连上 C++ 后端，控制台不可用。', 'err');
+    tw('双击 启动后端.bat，再用 http://localhost:8787 打开本页。', 'dim');
+    T.step = 'done'; el('#termPrompt').textContent = ''; i.disabled = true;
+    return;
+  }
+  tw('欢迎您来到单机版小红书，请登录/注册！', 'ok');
+  tw('（想退出，随时输入 #）', 'dim');
+  tw('');
+  tAsk('phone', '请输入手机号：');
+}
+
+async function termSubmit(raw){
+  if (T.step === 'idle' || T.step === 'done') return;
+  const line = raw.trim();
+  tw('> ' + line, 'echo');
+  switch (T.step){
+    case 'phone': {
+      if (line === '#') return tEnd();
+      if (!validPhone(line)){ tw('抱歉您输入的手机号有误！', 'err'); return tAsk('phone', '请输入手机号：'); }
+      T.phone = line; T.tries = 0;
+      const u = userByPhone(line);
+      if (u){ tw('该手机号已经注册，请登录！'); return tAsk('pwd', '请输入密码：'); }
+      tw('该手机号尚未注册，');
+      return tAsk('regPwd', '请设置密码,密码应包含数字和大小写字母：');
+    }
+    case 'pwd': {
+      if (line === '#') return tEnd();
+      const u = userByPhone(T.phone);
+      if (!u) return tAsk('phone', '请输入手机号：');
+      if (line === u.pwd){
+        T.user = { phone: u.phone, name: u.name };
+        tw('');
+        tw('登录成功！欢迎您，' + u.name + '!', 'ok');
+        return tMenu();
+      }
+      T.tries++;
+      if (T.tries >= 3) return tEnd('密码错误 3 次，已自动退出登录。');
+      tw('密码不正确！已输错密码' + T.tries + '次，错误超过3次将自动退出登录！', 'err');
+      return tAsk('pwd', '请输入密码：');
+    }
+    case 'regPwd': {
+      const err = validPwd(line);
+      if (err){ tw(err, 'err'); return tAsk('regPwd', '请设置密码,密码应包含数字和大小写字母：'); }
+      T.data.pwd = line;
+      tw('密码设置成功！', 'ok');
+      return tAsk('regPwd2', '请再次输入密码：');
+    }
+    case 'regPwd2': {
+      if (line !== T.data.pwd){ tw('两次输入密码不一致！', 'err'); return tAsk('regPwd2', '请再次输入密码：'); }
+      return tAsk('regName', '请设置昵称：');
+    }
+    case 'regName': {
+      T.data.name = line || ('用户' + T.phone);
+      T.code = Array.from({ length: 4 }, () => String.fromCharCode(65 + Math.floor(Math.random() * 26))).join('');
+      return tAsk('regCap', '请输入验证码' + T.code + ':');
+    }
+    case 'regCap': {
+      if (line.toUpperCase() !== T.code){ tw('验证码不正确，请重新输入！', 'err'); return tAsk('regCap', '请输入验证码' + T.code + ':'); }
+      const r = await call('register', { phone: T.phone, pwd: T.data.pwd, name: T.data.name });
+      if (!r.ok){ tw(r.error, 'err'); return tEnd(); }
+      await pull(); renderAll();
+      T.user = { phone: T.phone, name: T.data.name };
+      tw('注册成功！欢迎您，' + T.data.name + '!', 'ok');
+      return tMenu();
+    }
+    case 'menu': {
+      if (line === '#') return tEnd();
+      if (line === '1') return tAsk('postText', '请输入要发布的内容：');
+      if (line === '2') return tShowMine();
+      if (line === '3') return tShowReplyable();
+      if (line === '4') return tShowAll();
+      if (line === '5') return tShowFollows();
+      tw('请输入正确的选项！', 'err');
+      return tMenu();
+    }
+    case 'postText': {
+      if (line === '#') return tEnd();
+      if (!line){ tw('内容不能为空！', 'err'); return tAsk('postText', '请输入要发布的内容：'); }
+      T.data.content = line;
+      return tAsk('postConfirm', '确认发布吗？发布请按‘1’，取消请按‘2’：');
+    }
+    case 'postConfirm': {
+      if (line === '#') return tEnd();
+      if (line === '2'){ tw('已取消发布', 'dim'); return tMenu(); }
+      if (line !== '1'){ tw('请输入正确的选项！', 'err'); return tAsk('postConfirm', '确认发布吗？发布请按‘1’，取消请按‘2’：'); }
+      const r = await call('post/create', { phone: T.user.phone, content: T.data.content });
+      if (!r.ok){ tw(r.error, 'err'); return tMenu(); }
+      await pull(); renderAll();
+      tw('发布成功！', 'ok');
+      return tMenu();
+    }
+    case 'delPick': {
+      if (line === '#') return tEnd();
+      if (line === '0') return tMenu();
+      const n = parseInt(line, 10);
+      const arr = T.data.mine;
+      if (!(n >= 1 && n <= arr.length)){ tw('无第' + line + '个发布内容，请重新输入！', 'err'); return tAsk('delPick', '请选择需要删除的内容（输入序号，0 返回）：'); }
+      T.data.target = arr[n - 1];
+      return tAsk('delConfirm', '是否确认删除？确认按‘1’，取消按‘2’：');
+    }
+    case 'delConfirm': {
+      if (line === '#') return tEnd();
+      if (line === '2'){ tw('已取消操作', 'dim'); return tMenu(); }
+      if (line !== '1'){ tw('请输入正确的选项！', 'err'); return tAsk('delConfirm', '是否确认删除？确认按‘1’，取消按‘2’：'); }
+      const r = await call('post/delete', { id: T.data.target.id, phone: T.user.phone });
+      if (!r.ok){ tw(r.error, 'err'); return tMenu(); }
+      await pull(); renderAll();
+      tw('删除成功！', 'ok');
+      return tMenu();
+    }
+    case 'replyPick': {
+      if (line === '#') return tEnd();
+      if (line === '0') return tMenu();
+      const n = parseInt(line, 10);
+      const arr = T.data.replyPosts;
+      if (!(n >= 1 && n <= arr.length)){ tw('请输入正确的序号！', 'err'); return tAsk('replyPick', '请选择（0 返回）：'); }
+      const post = arr[n - 1];
+      T.data.target = post;
+      const cs = S.comments.filter(c => c.postId === post.id);
+      T.data.cs = cs;
+      tw('');
+      tw(post.name); tw(post.content); tw('');
+      cs.forEach((c, i) => { tw((i + 1) + '  ' + c.name); tw('   ' + c.text); tw(''); });
+      return tAsk('replyNo', "请输入需要回复的评论序号(返回按'0',退出按'-1')：");
+    }
+    case 'replyNo': {
+      if (line === '-1') return tEnd();
+      if (line === '0') return tMenu();
+      const n = parseInt(line, 10);
+      const cs = T.data.cs;
+      if (!(n >= 1 && n <= cs.length)){ tw('无第' + line + '条评论，请重新输入！', 'err'); return tAsk('replyNo', "请输入需要回复的评论序号(返回按'0',退出按'-1')："); }
+      T.data.replyTo = cs[n - 1];
+      return tAsk('replyText', '请输入回复的内容：');
+    }
+    case 'replyText': {
+      if (line === '#') return tEnd();
+      if (!line){ tw('回复不能为空！', 'err'); return tAsk('replyText', '请输入回复的内容：'); }
+      T.data.replyText = line;
+      return tAsk('replyConfirm', '确认回复吗？（确认按‘1’，取消按‘2’）：');
+    }
+    case 'replyConfirm': {
+      if (line === '#') return tEnd();
+      if (line === '2'){ tw('已取消操作', 'dim'); return tMenu(); }
+      if (line !== '1'){ tw('请输入正确的选项！', 'err'); return tAsk('replyConfirm', '确认回复吗？（确认按‘1’，取消按‘2’）：'); }
+      const r = await call('comment/create', { postId: T.data.target.id, phone: T.user.phone, text: T.data.replyText, parentId: T.data.replyTo.id });
+      if (!r.ok){ tw(r.error, 'err'); return tMenu(); }
+      await pull(); renderAll();
+      tw('回复成功！', 'ok');
+      return tMenu();
+    }
+    case 'browsePick': {
+      if (line === '#') return tEnd();
+      if (line === '0') return tMenu();
+      const n = parseInt(line, 10);
+      const arr = T.data.all;
+      if (!(n >= 1 && n <= arr.length)){ tw('请输入正确的编号！', 'err'); return tAsk('browsePick', '请输入需要查看内容的编号（0 返回）：'); }
+      const post = arr[n - 1];
+      T.data.target = post;
+      tw('');
+      tw(post.phone); tw(post.name); tw(post.content);
+      const cs = S.comments.filter(c => c.postId === post.id);
+      if (cs.length){ tw(''); cs.forEach(c => { tw(c.name); tw('   ' + c.text); }); }
+      return tAsk('browseCmt', '您是否要评论？是请按‘1’，否请按‘2’：');
+    }
+    case 'browseCmt': {
+      if (line === '#') return tEnd();
+      if (line === '2'){ tw('已返回', 'dim'); return tMenu(); }
+      if (line === '1') return tAsk('browseText', '请输入评论内容：');
+      tw('请输入正确的选项！', 'err');
+      return tAsk('browseCmt', '您是否要评论？是请按‘1’，否请按‘2’：');
+    }
+    case 'browseText': {
+      if (line === '#') return tEnd();
+      if (!line){ tw('评论不能为空！', 'err'); return tAsk('browseText', '请输入评论内容：'); }
+      const post = T.data.target;
+      const r = await call('comment/create', { postId: post.id, phone: T.user.phone, text: line });
+      if (!r.ok){ tw(r.error, 'err'); return tMenu(); }
+      await pull(); renderAll();
+      tw('评论成功！', 'ok');
+      const following = S.follows.some(f => f.userphone === T.user.phone && f.fophone === post.phone);
+      if (following){ tw('您已关注该用户，已返回', 'dim'); return tMenu(); }
+      return tAsk('browseFollow', '是否关注该用户？(关注请按‘1’，不关注请按‘2’）：');
+    }
+    case 'browseFollow': {
+      if (line === '#') return tEnd();
+      const post = T.data.target;
+      if (line === '1'){
+        const r = await call('follow', { phone: T.user.phone, target: post.phone, action: 'add' });
+        if (!r.ok){ tw(r.error, 'err'); return tMenu(); }
+        await pull(); renderAll();
+        tw('关注成功！', 'ok');
+        return tMenu();
+      }
+      if (line === '2'){ tw('您选择不关注，已返回', 'dim'); return tMenu(); }
+      tw('请输入正确的选项！', 'err');
+      return tAsk('browseFollow', '是否关注该用户？(关注请按‘1’，不关注请按‘2’）：');
+    }
+    case 'folPick': {
+      if (line === '#') return tEnd();
+      if (line === '0') return tMenu();
+      const n = parseInt(line, 10);
+      const arr = T.data.follows;
+      if (!(n >= 1 && n <= arr.length)){ tw('无第' + line + '个关注用户，请重新输入！', 'err'); return tAsk('folPick', '请选择您想要查看的用户编号（0 返回）：'); }
+      const who = arr[n - 1];
+      T.data.who = who;
+      const his = S.posts.filter(p => p.phone === who.fophone);
+      T.data.his = his;
+      if (!his.length){ tw('该用户还没有发布内容哦~', 'dim'); return tMenu(); }
+      tw('');
+      tw('以下是该用户所有的发布内容：');
+      his.forEach((p, i) => { tw((i + 1) + '  ' + fmtTime(p.time)); tw('   ' + p.content); tw(''); });
+      return tAsk('folPost', '请选择需要查看的发布内容（0 返回）：');
+    }
+    case 'folPost': {
+      if (line === '#') return tEnd();
+      if (line === '0') return tMenu();
+      const n = parseInt(line, 10);
+      const his = T.data.his;
+      if (!(n >= 1 && n <= his.length)){ tw('无第' + line + '个发布内容，请重新输入！', 'err'); return tAsk('folPost', '请选择需要查看的发布内容（0 返回）：'); }
+      const post = his[n - 1];
+      T.data.target = post;
+      tw('');
+      tw(post.name); tw(post.content);
+      const cs = S.comments.filter(c => c.postId === post.id);
+      if (cs.length){ tw(''); cs.forEach(c => { tw(c.name); tw('   ' + c.text); }); }
+      return tAsk('folText', '请输入评论内容：');
+    }
+    case 'folText': {
+      if (line === '#') return tEnd();
+      if (!line){ tw('评论不能为空！', 'err'); return tAsk('folText', '请输入评论内容：'); }
+      const r = await call('comment/create', { postId: T.data.target.id, phone: T.user.phone, text: line });
+      if (!r.ok){ tw(r.error, 'err'); return tMenu(); }
+      await pull(); renderAll();
+      tw('评论成功！', 'ok');
+      return tMenu();
+    }
+    default:
+      tw('（状态异常，已重置）', 'err');
+      return tEnd();
+  }
+}
+
+function openTerminal(){
+  el('#termModal').classList.add('on');
+  termBoot();
+  setTimeout(() => el('#termInput').focus(), 60);
+}
+
 /* ---------- 启动 ---------- */
 function updateBackendBadge(){
   const b = el('#backendState');
   if (!b) return;
-  if (API && BACKEND.mode === 'cpp'){
+  if (API && BACKEND.mode !== 'error'){
     b.className = 'backend-state';
     b.innerHTML = '<i></i>C++ 后端 · 端口 ' + (location.port || '80');
   } else if (API){

@@ -52,11 +52,32 @@ static string gbkToUtf8(const string& in) {
     WideCharToMultiByte(CP_UTF8, 0, w.c_str(), (int)w.size(), &o[0], m, nullptr, nullptr);
     return o;
 }
+static bool isValidUtf8(const string& s) {
+    size_t i = 0, n = s.size();
+    while (i < n) {
+        unsigned char c = (unsigned char)s[i];
+        int len;
+        if (c < 0x80) { i++; continue; }
+        else if ((c & 0xE0) == 0xC0) { if (c < 0xC2) return false; len = 2; }
+        else if ((c & 0xF0) == 0xE0) { len = 3; }
+        else if ((c & 0xF8) == 0xF0) { if (c > 0xF4) return false; len = 4; }
+        else return false;
+        if (i + (size_t)len > n) return false;
+        for (int k = 1; k < len; k++)
+            if (((unsigned char)s[i + k] & 0xC0) != 0x80) return false;
+        i += (size_t)len;
+    }
+    return true;
+}
 static string readFileUtf8(const string& path) {
     ifstream f(path.c_str(), ios::binary);
     if (!f) return "";
     string raw((istreambuf_iterator<char>(f)), istreambuf_iterator<char>());
-    return gbkToUtf8(raw);
+    if (raw.size() >= 3 && (unsigned char)raw[0] == 0xEF &&
+        (unsigned char)raw[1] == 0xBB && (unsigned char)raw[2] == 0xBF)
+        raw.erase(0, 3);                       // 去 BOM
+    if (isValidUtf8(raw)) return raw;          // 新版 txt：UTF-8
+    return gbkToUtf8(raw);                     // 老版 txt：GBK
 }
 
 // ---------------- 小工具 ----------------
@@ -377,16 +398,11 @@ static bool validPhone(const string& p) {
     if (p.size() != 11) return false;
     for (char c : p) if (!isdigit((unsigned char)c)) return false;
     if (p[0] != '1') return false;
-    char s = p[1], t = p[2];
-    if (!strchr("34578", s)) return false;
-    if (s == '4' && !strchr("79", t)) return false;
-    if (s == '5' && t == '4') return false;
-    if (s == '7' && !strchr("37", t)) return false;
-    if (s == '8' && !strchr("01569", t)) return false;
+    if (p[1] < '3' || p[1] > '9') return false;
     return true;
 }
 static string pwdError(const string& p) {
-    if (p.size() < 8) return "密码长度必须大于 8 位";
+    if (p.size() < 8) return "密码长度至少 8 位";
     for (char c : p) if (!isalnum((unsigned char)c)) return "密码含有非法字符";
     bool num = false, up = false, low = false;
     for (char c : p) { if (isdigit((unsigned char)c)) num = true; else if (isupper((unsigned char)c)) up = true; else low = true; }

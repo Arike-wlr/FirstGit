@@ -1,4 +1,4 @@
-#include<iostream>
+ï»¿#include<iostream>
 #include<cstring>
 #include<cstdlib>
 #include<ctime>
@@ -35,7 +35,7 @@ bool phone(char phonenum[])
 void password(char pwd[],int* f)
 {
 	int num = 0, bw = 0, sw = 0;
-	if (strlen(pwd) < 8) { cout << "ÃÜÂë³¤¶È±ØÐë´óÓÚ8Î»£¡" << endl;return; }
+	if (strlen(pwd) < 8) { cout << "å¯†ç é•¿åº¦å¿…é¡»å¤§äºŽ8ä½ï¼" << endl;return; }
 	else {
 		for (int i = 0;pwd[i] != '\0';i++)
 		{
@@ -43,13 +43,13 @@ void password(char pwd[],int* f)
 			else if (pwd[i] >= 'A' && pwd[i] <= 'Z')bw++;
 			else if (pwd[i] >= 'a' && pwd[i] <= 'z')sw++;
 			else {
-				cout << "ÃÜÂëº¬ÓÐ·Ç·¨×Ö·û£¡" << endl;return;
+				cout << "å¯†ç å«æœ‰éžæ³•å­—ç¬¦ï¼" << endl;return;
 			}
 		}
 			//cout << num << ' ' << bw << ' ' << sw << endl;
-			if (num == 0) { cout << "ÃÜÂëÖÐ±ØÐë°üº¬Êý×Ö£¡" << endl;return ; }
-			else if (bw == 0) { cout << "ÃÜÂëÖÐ±ØÐë°üº¬´óÐ´×ÖÄ¸£¡" << endl;return; }
-			else if (sw == 0) { cout << "ÃÜÂëÖÐ±ØÐë°üº¬Ð¡Ð´×ÖÄ¸£¡" << endl;return; }
+			if (num == 0) { cout << "å¯†ç ä¸­å¿…é¡»åŒ…å«æ•°å­—ï¼" << endl;return ; }
+			else if (bw == 0) { cout << "å¯†ç ä¸­å¿…é¡»åŒ…å«å¤§å†™å­—æ¯ï¼" << endl;return; }
+			else if (sw == 0) { cout << "å¯†ç ä¸­å¿…é¡»åŒ…å«å°å†™å­—æ¯ï¼" << endl;return; }
 			else {
 				*f = 1;return;
 			}
