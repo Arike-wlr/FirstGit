@@ -2,7 +2,8 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ff3a4e">
 <title>单机版小红书</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23ff2442'/%3E%3Crect x='8' y='8.5' width='16' height='15' rx='4' fill='none' stroke='%23fff' stroke-width='2.1'/%3E%3Cpath d='M12 14h8M12 18.2h5' stroke='%23fff' stroke-width='2.1' stroke-linecap='round'/%3E%3C/svg%3E">
 <style>
@@ -259,7 +260,7 @@ svg{display:block}
 .m-brand .bn{font-size:16.5px;font-weight:700;letter-spacing:-.5px}
 .m-user{margin-left:auto;display:flex;align-items:center;gap:8px}
 .m-user .mu-name{font-size:13px;font-weight:600;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.m-user .btn-ghost{padding:6px 11px;font-size:12px;background:#f5f6f9}
+.m-user .btn-ghost{padding:9px 14px;font-size:12.5px;background:#f5f6f9;min-height:36px}
 
 .composer{display:flex;gap:13px;padding:16px 18px;transition:.2s}
 .composer:focus-within{box-shadow:var(--shadow),0 0 0 3px rgba(255,45,70,.07);border-color:#f6dde1}
@@ -452,6 +453,9 @@ svg{display:block}
   .right{display:none}
 }
 @media (max-width:880px){
+  .composer-hint{display:none}
+  .m-user .mu-name{display:none}
+  .m-brand .bn{font-size:15px}
   .app{grid-template-columns:1fr;padding:0 14px 90px;gap:14px}
   .rail{display:none}
   .login{grid-template-columns:1fr;align-content:start}
@@ -671,138 +675,12 @@ svg{display:block}
 
 const KEY = 'xiaohongshu.web.v1';
 
-/* 原 users.txt：phone pwd name */
-const SEED_USERS = [
-  { phone:'18109971705', pwd:'Woxiangqusulian3',  name:'Bering Strait' },
-  { phone:'18151007936', pwd:'Wiyiliya19911225',  name:'Sunflower' },
-  { phone:'13815896033', pwd:'Ww12345678',        name:'王伟' },
-  { phone:'13319280516', pwd:'Zyang1902',         name:'宁瑾泱' },
-  { phone:'13318960408', pwd:'SJTUnanyang128',    name:'尚清源' },
-  { phone:'13518881888', pwd:'Jinling1888',       name:'宁瑾凌' },
-  { phone:'17719151027', pwd:'HHUhehai1915',      name:'宁沧淼' },
-  { phone:'13919520520', pwd:'NJUnanjing520',     name:'宁瑾诚' },
-  { phone:'18919170527', pwd:'FDUfudan527',       name:'尚明华' },
-  { phone:'17318970521', pwd:'ZJUzhejiang67656',  name:'江秋实' },
-  { phone:'17719580920', pwd:'USTCnico0920',      name:'安珂' },
-  { phone:'13919520606', pwd:'SEUdongnan66',      name:'宁瑾韵' },
-  { phone:'13418960910', pwd:'XJTUxianjiao128',   name:'秦思远' },
-  { phone:'15519381008', pwd:'NPUxigua1008',      name:'秦诣天' }
-];
-
-/* 原 contents.txt：只保留未被标记为 ## 的动态 */
-const SEED_POSTS = [
-  { id:'p1',  phone:'18109971705', name:'Bering Strait', time:'2024-12-05T20:55:17', content:'耶耶耶' },
-  { id:'p2',  phone:'13318960408', name:'尚清源',        time:'2024-12-07T19:13:53', content:'火车不开，自家开！' },
-  { id:'p3',  phone:'13319280516', name:'宁瑾泱',        time:'2024-12-07T19:34:35', content:'宁瑾诚管管你家人不要整天说我在打复活赛了好吗好的（）' },
-  { id:'p4',  phone:'13319280516', name:'宁瑾泱',        time:'2024-12-07T19:40:47', content:'纪念伟大的520运动！！' },
-  { id:'p5',  phone:'13518881888', name:'宁瑾凌',        time:'2024-12-07T22:34:19', content:'宁瑾诚你家有个大一的小登总喜欢掀我棺材板！！！上次质问我为什么把学校建在这个全是上坡的地方，这次又问我怎么这么会选校址的秋天这么漂亮，，关键是我只是个意识体啊，，校址又不是我选的！！！你这不管管吗！！' },
-  { id:'p6',  phone:'17719151027', name:'宁沧淼',        time:'2024-12-09T23:02:15', content:'我们是冠军！！蝉联冠军的第16年！！祝贺我和我的家人们！！同时也要祝贺亚军at宁瑾诚和季军at南理工（目前南理工还没人设，凑合看看（）！！' },
-  { id:'p7',  phone:'13919520520', name:'宁瑾诚',        time:'2024-12-10T22:43:00', content:'诚朴雄伟，励学敦行！  嚼得菜根，做得大事！' },
-  { id:'p8',  phone:'18919170527', name:'尚明华',        time:'2024-12-11T22:22:07', content:'呵，除了我们五个，谁配争这TOP3的名号！！' },
-  { id:'p9',  phone:'17318970521', name:'江秋实',        time:'2024-12-11T22:45:11', content:'const ZJU=0.00035474;......!!(?' },
-  { id:'p10', phone:'13919520606', name:'宁瑾韵',        time:'2024-12-12T20:45:14', content:'不在福建，，不是三本。。。' },
-  { id:'p11', phone:'13418960910', name:'秦思远',        time:'2024-12-13T14:32:53', content:'有些学校整天喊着“为国铸剑”，这种学校的意识体，我们一般喊她剑人[doge]' },
-  { id:'p12', phone:'13919520520', name:'宁瑾诚',        time:'2024-12-13T14:37:12', content:'铭记历史，勿忘国耻，牢记使命，继往开来。' },
-  { id:'p13', phone:'15519381008', name:'秦诣天',        time:'2024-12-13T14:48:55', content:'西瓜大，西瓜甜，西瓜不沙不要钱！（？' }
-];
-
-/* 原 comments.txt：text 为原始评论串，其中的「博主回复：」由程序一路拼进去的 */
-const RAW_COMMENTS = [
-  { post:'p3',  by:'宁瑾诚',       text:'em,这个，我，，我尽量吧......我难道不想打复活赛吗......QAQ博主回复：博主回复：难过了，我难道不想打复活赛吗......QAQ博主回复：你以为我不打复活赛，是我不想吗（）博主回复：出bug了吗（）博主回复：debuging。。。' },
-  { post:'p3',  by:'宁瑾凌',       text:'我也想打复活赛，教教我呗（）[doge]博主回复：你以为我不打复活赛，是因为我不想吗（）TAT' },
-  { post:'p3',  by:'宁瑾凌',       text:'博主回复：出bug了吗（）哥你那台电脑确实该拿给宁瑾韵修一下。。。' },
-  { post:'p3',  by:'宁瑾诚',       text:'等等不对啊，宁瑾韵他家的人也天天喊这些啊，您怎么不cue他啊。。。QAQ博主回复：有没有一种可能，你这个大哥需要起到带头作用（）' },
-  { post:'p4',  by:'宁瑾诚',       text:'520运动永垂不朽！！！' },
-  { post:'p6',  by:'宁瑾诚',       text:'祝贺呀！！你们超级棒的！！！[smile]' },
-  { post:'p6',  by:'尚清源',       text:'宁可每你真的好nb！！！' },
-  { post:'p6',  by:'宁沧淼',       text:'at 尚清源 ？？？说了多少次了不要叫我宁可每。。。下次再这么叫小心我让表哥来把你按在地上摩擦（？）' },
-  { post:'p6',  by:'尚明华',       text:'恭喜！！太棒了小海！以及需要我帮你at江秋实 吗[doge]' },
-  { post:'p6',  by:'江秋实',       text:'祝贺你！！有需要随时叫我，不介意的哈[doge]' },
-  { post:'p7',  by:'Sunflower',    text:'嚼得大根，做得菜事[doge]博主回复：???' },
-  { post:'p7',  by:'尚明华',       text:'博学而笃志，切问而近思！' },
-  { post:'p7',  by:'江秋实',       text:'求是创新！' },
-  { post:'p7',  by:'宁瑾韵',       text:'止于至善！' },
-  { post:'p2',  by:'尚明华',       text:'我猜你是尚清洋，毕竟尚清源发不出这么正常的东西（？）博主回复：？？？啊？？？我难得正常一次你居然怀疑我被盗号了？？？' },
-  { post:'p2',  by:'秦思远',       text:'大树西迁精神永放光芒！' },
-  { post:'p8',  by:'尚清源',       text:'呵，痴心妄想！' },
-  { post:'p8',  by:'江秋实',       text:'呵，痴心妄想！' },
-  { post:'p8',  by:'安珂',         text:'呵，痴心妄想！' },
-  { post:'p8',  by:'宁瑾诚',       text:'啊，大家攻击性不要这么强啊...友好一点嘛' },
-  { post:'p8',  by:'宁瑾韵',       text:'呵，痴心妄想！！' },
-  { post:'p8',  by:'宁瑾诚',       text:'at宁瑾韵 ？你又在乱叫什么（）博主回复：<<友好一点嘛>> <<兄友弟恭>>[doge]' },
-  { post:'p10', by:'Bering Strait',text:'好的我知道了福建大三本[doge]博主回复：我马上请土木院的学长们来把你埋了...' },
-  { post:'p10', by:'Sunflower',    text:'好的我知道了，福建大三本（？）' },
-  { post:'p10', by:'宁瑾诚',       text:'知足吧，三本比五百本好多了（）' },
-  { post:'p10', by:'宁瑾诚',       text:'你说是吧，福建大三本[doge]' },
-  { post:'p10', by:'Bering Strait',text:'test' },
-  { post:'p10', by:'宁瑾泱',       text:'好的，福建大三本（）' },
-  { post:'p11', by:'秦诣天',       text:'。尚清源快把账号还给你哥...' },
-  { post:'p9',  by:'江秋实',       text:'emm我的精神状态不太妙，请大家忽略这一条...' },
-  { post:'p13', by:'宁瑾凌',       text:'小航啊，想家了随时回南京看看吧，我们大家都很牵挂你呢：）在大西北挺辛苦的吧...' },
-  { post:'p13', by:'宁瑾泱',       text:'加油小航！为国铸剑！！' }
-];
-
-/* 原 follows.txt（已去重）*/
-const SEED_FOLLOWS = [
-  { userphone:'18151007936', fophone:'13919520520', foname:'宁瑾诚' },
-  { userphone:'13919520520', fophone:'13319280516', foname:'宁瑾泱' },
-  { userphone:'13919520520', fophone:'18919170527', foname:'尚明华' },
-  { userphone:'13919520520', fophone:'13919520606', foname:'宁瑾韵' },
-  { userphone:'18919170527', fophone:'17719151027', foname:'宁沧淼' },
-  { userphone:'18919170527', fophone:'13919520520', foname:'宁瑾诚' },
-  { userphone:'13318960408', fophone:'18919170527', foname:'尚明华' },
-  { userphone:'17318970521', fophone:'18919170527', foname:'尚明华' },
-  { userphone:'17318970521', fophone:'13919520520', foname:'宁瑾诚' },
-  { userphone:'17719580920', fophone:'18919170527', foname:'尚明华' },
-  { userphone:'18109971705', fophone:'13919520606', foname:'宁瑾韵' },
-  { userphone:'13919520606', fophone:'13919520520', foname:'宁瑾诚' },
-  { userphone:'13418960910', fophone:'13318960408', foname:'尚清源' },
-  { userphone:'13518881888', fophone:'15519381008', foname:'秦诣天' },
-  { userphone:'13319280516', fophone:'15519381008', foname:'秦诣天' },
-  { userphone:'13319280516', fophone:'13919520606', foname:'宁瑾韵' }
-];
-
-/* 把 "xxx博主回复：yyy" 拆成正文 + 博主回复链 */
-function parseCommentText(raw){
-  const t = String(raw).replace(/\s*\/\/\s*博主回复：/g, '博主回复：').trim();
-  const parts = t.split('博主回复：');
-  let main = (parts.shift() || '').trim();
-  let replies = parts.map(s => s.trim()).filter(Boolean);
-  if (!main && replies.length) main = replies.shift();
-  return { main, replies };
-}
-
-function seedState(){
-  const postTime = k => new Date(k).getTime();
-  const comments = RAW_COMMENTS.map((c, i) => {
-    const post = SEED_POSTS.find(p => p.id === c.post);
-    const u = SEED_USERS.find(x => x.name === c.by);
-    const parcel = parseCommentText(c.text);
-    const base = post ? postTime(post.time) : Date.now();
-    const rname = post ? post.name : '博主';
-    return {
-      id: 'c' + (i + 1),
-      postId: c.post,
-      phone: u ? u.phone : '',
-      name: c.by,
-      text: parcel.main,
-      time: new Date(base + (i + 1) * 7 * 60000).toISOString(),
-      replies: parcel.replies.map((r, j) => ({ name: rname, text: r, time: new Date(base + (i + 1) * 7 * 60000 + (j + 1) * 60000).toISOString() }))
-    };
-  });
-  return {
-    users: clone(SEED_USERS),
-    posts: clone(SEED_POSTS),
-    comments,
-    follows: clone(SEED_FOLLOWS),
-    currentPhone: null
-  };
-}
-
 /* ---------- 状态 ---------- */
-// 通过 http(s) 打开时说明有 C++ 后端在跑；直接双击文件则是纯前端模式
-const API = /^https?:$/.test(location.protocol) ? 'api' : null;
-const BACKEND = { mode: API ? 'cpp' : 'local', files: null, db: null, error: '' };
+// 通过 http(s) 打开时说明有 C++ 后端在跑；直接双击文件则是纯前端模式（数据在浏览器 localStorage）
+// 打包进 Android app 时从 appassets 加载：默认离线，数据存在手机 WebView 的 localStorage
+const IN_APP = location.hostname === 'appassets.androidplatform.net';
+const API = (!IN_APP && /^https?:$/.test(location.protocol)) ? 'api' : null;
+const BACKEND = { mode: IN_APP ? 'app' : (API ? 'cpp' : 'local'), files: null, db: null, error: '' };
 
 let S = loadState();
 let tab = 'square';
@@ -817,11 +695,10 @@ function loadState(){
     const raw = localStorage.getItem(KEY);
     if (raw){
       const s = JSON.parse(raw);
-      // 旧版本数据（用户数量对不上）直接重建成完整种子
-      if (s && Array.isArray(s.users) && s.users.length >= SEED_USERS.length && Array.isArray(s.comments)) return s;
+      if (s && Array.isArray(s.users) && Array.isArray(s.comments)) return s;
     }
   }catch(e){}
-  return seedState();
+  return { users: [], posts: [], comments: [], follows: [], currentPhone: null };
 }
 function save(){
   try{
@@ -1394,7 +1271,7 @@ function renderRight(){
         <div class="stat-cell"><b>${S.comments.length}</b><span>评论</span></div>
         <div class="stat-cell"><b>${S.follows.length}</b><span>关注关系</span></div>
       </div>
-      <button class="reset-btn" data-act="reset">${API ? '重新从数据库加载' : '重置为原始数据'}</button>
+      <button class="reset-btn" data-act="reset">${API ? '重新从数据库加载' : '清空本地数据'}</button>
     </div>
     <div class="foot-note">
       ${API
@@ -1675,6 +1552,50 @@ document.addEventListener('click', async e => {
     case 'confirmNo': closeConfirm(); break;
     case 'terminal': openTerminal(); break;
     case 'people': openPeople(t.dataset.kind); break;
+    case 'viewUser': {
+      const phone = t.dataset.phone;
+      if (!phone) break;
+      authorFilter = phone;
+      query = ''; el('#search').value = '';
+      tab = 'square';
+      el('#peopleModal').classList.remove('on');
+      closeDrawer();
+      renderAll();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      break;
+    }
+    case 'clearAuthor': { authorFilter = null; renderAll(); break; }
+    case 'logout': logout(); break;
+    case 'deleteAccount': {
+      const m2 = me(); if (!m2) break;
+      confirmDialog({
+        title: '注销这个账号？',
+        desc: m2.name + ' 将无法再登录、也不会出现在登录列表里，但发过的动态和评论都保留。',
+        ok: '注销',
+        async cb(){
+          const r = await call('user/delete', { phone: m2.phone });
+          if (!r.ok) return toast(r.error || '注销失败', 'err');
+          S.currentPhone = null;
+          save();
+          await pull();
+          el('#app').style.display = 'none';
+          el('#login').classList.remove('hide');
+          loginState = { step:'phone', phone:'', name:'', pwd:'', tries:0, code:'' };
+          renderLogin();
+          toast('账号已注销，内容都留着', 'ok');
+        }
+      });
+      break;
+    }
+    case 'confirmYes': {
+      const cb = cfCallback;
+      closeConfirm();
+      if (cb) cb();
+      break;
+    }
+    case 'confirmNo': closeConfirm(); break;
+    case 'terminal': openTerminal(); break;
+    case 'people': openPeople(t.dataset.kind); break;
     case 'closePeople': el('#peopleModal').classList.remove('on'); break;
     case 'closeTerm': el('#termModal').classList.remove('on'); break;
     case 'reset': {
@@ -1692,17 +1613,16 @@ document.addEventListener('click', async e => {
         });
       } else {
         confirmDialog({
-          title:'重置为原始数据？',
-          desc:'会丢掉你刚才发的动态和评论，恢复成四个 txt 里最初的样子。',
-          ok:'重置',
+          title:'清空本地数据？',
+          desc:'会丢掉你在本机发的动态和评论，恢复成空白状态。',
+          ok:'清空',
           cb(){
             const keep = S.currentPhone;
-            S = seedState();
-            S.currentPhone = keep;
+            S = { users: [], posts: [], comments: [], follows: [], currentPhone: keep };
             save();
             tab = 'square'; query = ''; el('#search').value = '';
             renderAll();
-            toast('已恢复原始数据', 'ok');
+            toast('已清空本地数据', 'ok');
           }
         });
       }
@@ -2110,6 +2030,11 @@ function openTerminal(){
 function updateBackendBadge(){
   const b = el('#backendState');
   if (!b) return;
+  if (IN_APP){
+    b.className = 'backend-state local';
+    b.innerHTML = '<i></i>离线模式 · 数据在这台手机上';
+    return;
+  }
   if (API && BACKEND.mode !== 'error'){
     b.className = 'backend-state';
     b.innerHTML = '<i></i>C++ 后端 · 端口 ' + (location.port || '80');

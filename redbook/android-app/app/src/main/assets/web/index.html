@@ -1,0 +1,2079 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ff3a4e">
+<title>单机版小红书</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23ff2442'/%3E%3Crect x='8' y='8.5' width='16' height='15' rx='4' fill='none' stroke='%23fff' stroke-width='2.1'/%3E%3Cpath d='M12 14h8M12 18.2h5' stroke='%23fff' stroke-width='2.1' stroke-linecap='round'/%3E%3C/svg%3E">
+<style>
+/* ============ 基础 ============ */
+*,*::before,*::after{box-sizing:border-box}
+:root{
+  --bg:#f3f4f7;
+  --surface:#ffffff;
+  --ink:#15161b;
+  --ink2:#43474f;
+  --muted:#8b909c;
+  --line:#e9ebf1;
+  --brand:#ff3a4e;
+  --brand2:#ff6b6b;
+  --brand3:#ff1f3d;
+  --soft:#fff0f3;
+  --radius:20px;
+  --shadow-sm:0 1px 2px rgba(20,22,30,.05);
+  --shadow:0 1px 2px rgba(20,22,30,.04),0 12px 32px -20px rgba(20,22,30,.28);
+}
+html,body{height:100%}
+html{overflow-x:clip}
+body{
+  margin:0;background:var(--bg);color:var(--ink);
+  overflow-x:clip;
+  font-family:"PingFang SC","HarmonyOS Sans SC","Microsoft YaHei UI","Microsoft YaHei",system-ui,-apple-system,"Segoe UI",sans-serif;
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+  font-size:15px;line-height:1.6;
+}
+body::before{
+  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(900px 520px at 8% -8%, rgba(255,138,61,.16), transparent 60%),
+    radial-gradient(760px 480px at 102% 4%, rgba(124,140,248,.13), transparent 62%),
+    radial-gradient(700px 500px at 60% 108%, rgba(255,45,70,.08), transparent 60%);
+}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+input,textarea{font:inherit;color:inherit}
+input:focus,textarea:focus{outline:none}
+::selection{background:rgba(255,45,70,.18)}
+svg{display:block}
+.i{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:#dfe2ea;border-radius:99px;border:3px solid transparent;background-clip:content-box}
+::-webkit-scrollbar-thumb:hover{background:#cfd3dd;background-clip:content-box}
+::-webkit-scrollbar-track{background:transparent}
+
+/* ============ 通用组件 ============ */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-sm)}
+.avatar{
+  --a:#ff8a5c;--b:#ff5f6d;
+  width:44px;height:44px;border-radius:14px;flex:none;
+  display:grid;place-items:center;color:#fff;font-weight:600;font-size:17px;
+  background:linear-gradient(140deg,var(--a),var(--b));
+  box-shadow:0 6px 14px -8px var(--b);letter-spacing:0;user-select:none;
+}
+.avatar.sm{width:34px;height:34px;border-radius:11px;font-size:13px}
+.avatar.lg{width:56px;height:56px;border-radius:18px;font-size:22px}
+.btn-primary{
+  display:inline-flex;align-items:center;gap:7px;justify-content:center;
+  padding:10px 20px;border-radius:13px;font-weight:600;font-size:14.5px;color:#fff;
+  background:linear-gradient(135deg,var(--brand) 0%,var(--brand3) 100%);
+  box-shadow:0 10px 22px -12px rgba(255,31,61,.85);transition:.22s cubic-bezier(.2,.7,.3,1);
+}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 14px 26px -12px rgba(255,31,61,.9)}
+.btn-primary:active{transform:translateY(0) scale(.985)}
+.btn-primary:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none}
+.btn-ghost{
+  display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:11px;
+  font-size:13.5px;color:var(--ink2);font-weight:500;transition:.18s;border:1px solid transparent;
+}
+.btn-ghost:hover{background:#f2f3f7;color:var(--ink)}
+.btn-ghost.on{color:var(--brand);background:var(--soft)}
+.btn-line{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:11px;font-size:13.5px;font-weight:500;border:1px solid var(--line);color:var(--ink2);transition:.18s;background:#fff}
+.btn-line:hover{border-color:#dadde6;background:#fafbfc}
+.muted{color:var(--muted)}
+.pill{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;font-size:11.5px;font-weight:500;background:var(--soft);color:#e8324a;letter-spacing:.2px}
+
+/* ============ 登录页 ============ */
+.login{position:fixed;inset:0;z-index:60;display:grid;grid-template-columns:1.06fr .94fr;background:var(--bg);overflow:auto}
+.login.hide{display:none}
+.login-art{
+  position:relative;overflow:hidden;padding:52px 56px;display:flex;flex-direction:column;
+  background:linear-gradient(158deg,#fff8f9 0%,#fff0f2 44%,#ffe7ee 100%);
+  border-right:1px solid rgba(255,90,110,.12);
+}
+.login-art::after{
+  content:"";position:absolute;inset:0;opacity:.5;pointer-events:none;
+  background-image:radial-gradient(rgba(255,45,70,.14) 1px,transparent 1px);
+  background-size:22px 22px;mask-image:radial-gradient(120% 90% at 20% 0%,#000,transparent 72%);
+}
+.glow{position:absolute;border-radius:50%;filter:blur(64px);opacity:.42;pointer-events:none}
+.glow.a{width:420px;height:420px;background:rgba(255,110,130,.45);top:-120px;left:-90px}
+.glow.b{width:380px;height:380px;background:rgba(255,80,120,.3);bottom:-120px;right:-80px}
+.art-inner{position:relative;z-index:2;display:flex;flex-direction:column;height:100%}
+.brand-row{display:flex;align-items:center;gap:12px}
+.logo{
+  width:46px;height:46px;border-radius:15px;display:grid;place-items:center;color:#fff;
+  background:linear-gradient(140deg,var(--brand),var(--brand3));
+  box-shadow:0 12px 24px -12px rgba(255,31,61,.9);
+}
+.logo svg{width:22px;height:22px;fill:none;stroke:#fff;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.brand-name{font-size:19px;font-weight:700;letter-spacing:-.4px;line-height:1.2}
+.brand-sub{font-size:11.5px;color:#a8787f;letter-spacing:.6px;font-weight:500}
+.art-inner h1{
+  font-size:clamp(30px,3.1vw,44px);line-height:1.28;letter-spacing:-1.4px;
+  margin:56px 0 0;font-weight:700;color:#2a1e22;
+}
+.art-inner h1 em{
+  font-style:normal;position:relative;
+  background:linear-gradient(120deg,var(--brand),var(--brand3));
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.art-desc{margin:16px 0 0;max-width:24em;color:#7c626b;font-size:14.5px;line-height:1.85}
+.art-menu{display:flex;flex-wrap:wrap;gap:8px;margin-top:28px;max-width:400px}
+.art-menu span{
+  display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:#9c737c;font-weight:500;
+  background:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.9);padding:5px 11px;border-radius:999px;
+}
+.art-menu b{font-weight:700;color:#d09a86;font-size:10.5px;letter-spacing:.4px}
+.art-cards{position:relative;margin-top:auto;padding-top:34px;height:326px}
+.mini-card{
+  position:absolute;width:min(320px,88%);background:rgba(255,255,255,.92);backdrop-filter:blur(10px);
+  border:1px solid rgba(255,255,255,.9);border-radius:16px;padding:14px 16px;
+  box-shadow:0 18px 40px -24px rgba(120,60,40,.55);
+  animation:floaty 7s ease-in-out infinite;
+}
+.mini-card p{margin:9px 0 0;font-size:13.5px;color:#3a2f33;line-height:1.6}
+.mc-head{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:#4a3a3e}
+.mc-av{width:24px;height:24px;border-radius:8px;display:grid;place-items:center;color:#fff;font-size:11px;font-weight:600;background:linear-gradient(140deg,#ff8a5c,#ff5f6d)}
+.mc-time{margin-left:auto;font-weight:400;color:#b09aa0;font-size:11.5px}
+.mini-card.c1{left:0;top:6px;transform:rotate(-2.2deg);z-index:3}
+.mini-card.c2{left:46px;top:126px;transform:rotate(1.6deg);z-index:2;animation-delay:-2.4s}
+.mini-card.c3{left:12px;top:246px;transform:rotate(-1deg);z-index:1;animation-delay:-4.2s}
+@keyframes floaty{0%,100%{translate:0 0}50%{translate:0 -9px}}
+.art-foot{position:relative;z-index:3;margin-top:24px;font-size:12px;color:#a8787f;display:flex;gap:14px;flex-wrap:wrap}
+.art-foot span{display:inline-flex;align-items:center;gap:5px}
+
+.login-panel{display:flex;flex-direction:column;justify-content:center;padding:48px 40px;min-width:0}
+.form-wrap{width:100%;max-width:390px;margin:0 auto}
+.step-tag{font-size:11.5px;color:#b6a49c;letter-spacing:1.6px;font-weight:600;text-transform:uppercase;margin-bottom:14px}
+.form-wrap h2{font-size:27px;letter-spacing:-.8px;margin:0 0 8px;font-weight:700}
+.form-wrap .sub{color:var(--muted);font-size:13.8px;margin:0 0 26px;line-height:1.7}
+.field{
+  display:flex;align-items:center;gap:10px;padding:0 15px;height:52px;border-radius:14px;
+  border:1px solid var(--line);background:#fff;transition:.2s;margin-bottom:12px;
+  box-shadow:var(--shadow-sm);
+}
+.field:focus-within{border-color:#ffbac4;box-shadow:0 0 0 4px rgba(255,45,70,.1)}
+.field svg{color:#aeb3bf;width:17px;height:17px}
+.field input{flex:1;min-width:0;border:0;background:none;font-size:15px;height:100%}
+.field input::placeholder{color:#b6bac4}
+.field .tail{font-size:12px;color:#b6bac4;letter-spacing:.5px}
+.form-wrap .btn-primary{width:100%;height:50px;margin-top:6px;font-size:15px;border-radius:14px}
+.err{color:#e8324a;font-size:12.8px;min-height:20px;margin:-2px 0 8px;padding-left:2px}
+.back{display:inline-flex;align-items:center;gap:5px;font-size:13px;color:var(--muted);margin-bottom:18px;padding:0}
+.back:hover{color:var(--ink)}
+.divider{display:flex;align-items:center;gap:12px;margin:26px 0 16px;color:#b6bac4;font-size:11.5px}
+.divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--line)}
+.chips{display:flex;flex-direction:column;gap:8px;max-height:212px;overflow-y:auto;padding-right:4px;margin-right:-4px;
+  -webkit-mask-image:linear-gradient(#000 calc(100% - 18px),transparent);mask-image:linear-gradient(#000 calc(100% - 24px),transparent)}
+.chip{
+  display:flex;align-items:center;gap:11px;padding:9px 13px;border-radius:13px;
+  background:#f8f9fb;border:1px solid #eef0f5;text-align:left;transition:.18s;width:100%;
+}
+.chip:hover{background:#fff;border-color:#ffcad2;box-shadow:0 8px 20px -16px rgba(20,22,30,.5);transform:translateY(-1px)}
+.chip .ch-name{font-size:13.5px;font-weight:600}
+.chip .ch-phone{font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.chip .ch-pwd{font-weight:500;color:#6b7180;font-family:"Cascadia Mono",Consolas,monospace;font-size:11px;letter-spacing:-.2px}
+.chip .ch-go{margin-left:auto;color:#c3c7d1;font-size:16px;line-height:1}
+.hint{font-size:11.8px;color:#b6bac4;text-align:center;margin-top:24px;line-height:1.7}
+.cap-row{display:flex;gap:10px;align-items:center}
+.cap{
+  display:inline-flex;gap:7px;padding:8px 14px;border-radius:11px;background:#f6f7fa;
+  border:1px dashed #dfe3ec;user-select:none;flex:none;
+}
+.cap span{
+  font-family:"Cascadia Mono",Consolas,monospace;font-size:22px;font-weight:700;color:#4d5566;
+  display:inline-block;width:16px;text-align:center;line-height:1.1;
+}
+.cap span:nth-child(1){transform:rotate(-12deg)}
+.cap span:nth-child(2){transform:rotate(7deg) translateY(1px)}
+.cap span:nth-child(3){transform:rotate(-5deg)}
+.cap span:nth-child(4){transform:rotate(11deg) translateY(-1px)}
+
+/* ============ 应用布局 ============ */
+.app{
+  position:relative;z-index:1;display:grid;gap:26px;max-width:1256px;margin:0 auto;
+  padding:28px 24px 60px;grid-template-columns:242px minmax(0,1fr) 300px;align-items:start;
+}
+.rail{position:sticky;top:28px;display:flex;flex-direction:column;gap:16px;max-height:calc(100vh - 56px)}
+.rail-brand{display:flex;align-items:center;gap:11px;padding:4px 6px 14px}
+.rail-brand .logo{width:40px;height:40px;border-radius:13px}
+.rail-brand .logo svg{width:21px;height:21px}
+.rail-brand .bn{font-size:17.5px;font-weight:700;letter-spacing:-.5px;line-height:1.15}
+.rail-brand .bs{font-size:10.5px;color:var(--muted);letter-spacing:.8px}
+.nav{display:flex;flex-direction:column;gap:3px}
+.nav-item{
+  display:flex;align-items:center;gap:11px;padding:11px 14px;border-radius:13px;
+  font-size:14.5px;color:var(--ink2);font-weight:500;transition:.18s;text-align:left;width:100%;
+}
+.nav-item:hover{background:rgba(255,255,255,.7);color:var(--ink)}
+.nav-item.active{background:#fff;color:var(--brand);font-weight:600;box-shadow:var(--shadow);border:1px solid rgba(255,45,70,.1)}
+.nav-item .n-count{margin-left:auto;font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.nav-item.active .n-count{color:var(--brand);opacity:.7}
+
+.profile-card{padding:16px;border-radius:var(--radius);background:#fff;border:1px solid var(--line);box-shadow:var(--shadow-sm)}
+.pc-top{display:flex;gap:11px;align-items:center}
+.pc-name{font-weight:650;font-size:15px;letter-spacing:-.2px;line-height:1.3}
+.pc-phone{font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.pc-stats{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin:14px 0 12px;padding:10px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.pc-stat{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:8px 0;border-radius:10px;transition:.16s}
+.pc-stat:hover{background:#f6f7fb}
+.pc-stat:active{background:#eef0f6}
+.pc-stat:hover span{color:var(--brand)}
+.pc-stat b{font-size:15px;font-weight:650;letter-spacing:-.3px;font-variant-numeric:tabular-nums}
+.pc-stat span{font-size:12px;color:var(--muted)}
+.pc-actions{display:flex;gap:8px}
+.pc-actions .btn-ghost{flex:1;justify-content:center;padding:7px;font-size:12.5px;background:#f7f8fa}
+.del-account{display:block;width:100%;margin-top:7px;padding:3px;font-size:11px;color:#c3c7d1;transition:.16s}
+.del-account:hover{color:#e8324a}
+
+.follow-block{padding:14px 8px 8px;display:flex;flex-direction:column;min-height:0}
+.sec-title{display:flex;align-items:center;font-size:11.5px;color:var(--muted);letter-spacing:1.2px;font-weight:600;padding:0 8px 10px;text-transform:uppercase}
+.sec-title span{margin-left:auto;letter-spacing:0}
+.follow-item{display:flex;align-items:center;gap:9px;padding:7px 8px;border-radius:11px;width:100%;text-align:left;transition:.15s}
+.follow-item:hover{background:rgba(255,255,255,.85)}
+.fi-name{font-size:13px;font-weight:500;line-height:1.3}
+.fi-phone{font-size:10.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.rail-foot{margin-top:auto;padding-top:8px}
+.term-btn{display:flex;align-items:center;gap:8px;width:100%;padding:10px 13px;border-radius:13px;background:rgba(255,255,255,.6);border:1px dashed #d9dde7;font-size:12.5px;color:#6b7180;transition:.18s}
+.term-btn:hover{background:#fff;border-color:#c9cfdb;color:var(--ink)}
+.backend-state{display:flex;align-items:center;gap:6px;font-size:10.5px;color:#a8adb8;padding:9px 6px 0;letter-spacing:.2px}
+.backend-state i{width:6px;height:6px;border-radius:50%;background:#3ec98a;box-shadow:0 0 0 3px rgba(62,201,138,.16);flex:none}
+.backend-state.local i{background:#c3c7d1;box-shadow:none}
+
+/* 中栏 */
+.main{min-width:0;display:flex;flex-direction:column;gap:16px}
+.topbar{display:flex;align-items:center;gap:14px;min-height:44px}
+.topbar .tb-title{font-size:23px;font-weight:700;letter-spacing:-.7px;line-height:1.2}
+.topbar .tb-sub{font-size:12.5px;color:var(--muted);margin-top:2px}
+.search{
+  margin-left:auto;display:flex;align-items:center;gap:8px;height:40px;padding:0 13px;border-radius:12px;
+  background:#fff;border:1px solid var(--line);width:216px;transition:.2s;box-shadow:var(--shadow-sm);
+}
+.search:focus-within{width:246px;border-color:#ffc1cb;box-shadow:0 0 0 4px rgba(255,45,70,.09)}
+.search input{border:0;background:none;width:100%;font-size:13.5px}
+.search input::placeholder{color:#b6bac4}
+.search svg{color:#b6bac4;width:16px;height:16px}
+.mobile-tabs{display:none}
+.m-brand{display:none;align-items:center;gap:9px;width:100%;margin-bottom:2px}
+.m-brand .logo{width:34px;height:34px;border-radius:11px;box-shadow:0 8px 16px -9px rgba(255,31,61,.85)}
+.m-brand .logo svg{width:18px;height:18px}
+.m-brand .bn{font-size:16.5px;font-weight:700;letter-spacing:-.5px}
+.m-user{margin-left:auto;display:flex;align-items:center;gap:8px}
+.m-user .mu-name{font-size:13px;font-weight:600;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.m-user .btn-ghost{padding:9px 14px;font-size:12.5px;background:#f5f6f9;min-height:36px}
+
+.composer{display:flex;gap:13px;padding:16px 18px;transition:.2s}
+.composer:focus-within{box-shadow:var(--shadow),0 0 0 3px rgba(255,45,70,.07);border-color:#f6dde1}
+.composer-body{flex:1;min-width:0}
+.composer textarea{
+  width:100%;border:0;background:none;resize:none;font-size:15px;line-height:1.7;
+  min-height:52px;max-height:220px;padding:2px 0 0;
+}
+.composer textarea::placeholder{color:#b6bac4}
+.composer-bar{display:flex;align-items:center;justify-content:flex-end;gap:14px;margin-top:8px;padding-top:10px;border-top:1px solid #f2f4f8}
+.composer-hint{font-size:11.5px;color:#c3c7d1;margin-right:auto}
+.char-count{font-size:11.5px;color:#b6bac4;font-variant-numeric:tabular-nums}
+.composer-bar .btn-primary{padding:8px 20px;border-radius:11px;font-size:13.5px}
+
+.feed{display:flex;flex-direction:column;gap:14px}
+.post{padding:18px 20px 8px;animation:rise .5s cubic-bezier(.2,.7,.3,1) both}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.post-head{display:flex;gap:12px;align-items:flex-start}
+.av-btn{flex:none;border-radius:16px;transition:.16s;display:block}
+.av-btn:hover{transform:translateY(-1px)}
+.av-btn:active{transform:none}
+.txt-link{color:var(--brand);font-size:12.5px;font-weight:500;padding:0 2px}
+.txt-link:hover{text-decoration:underline}
+.post-who{flex:1;min-width:0;padding-top:1px}
+.post-name{display:flex;align-items:center;gap:7px;font-size:14.5px;font-weight:650;letter-spacing:-.15px;line-height:1.3}
+.post-meta{font-size:11.5px;color:var(--muted);margin-top:3px;display:flex;gap:6px;align-items:center;font-variant-numeric:tabular-nums}
+.post-meta i{width:2px;height:2px;border-radius:50%;background:#c7cbd4;display:inline-block}
+.post-content{margin:13px 0 14px;font-size:15px;line-height:1.78;color:#26282f;word-break:break-word;white-space:pre-wrap}
+.post-foot{display:flex;align-items:center;gap:2px;padding:10px 0 10px;border-top:1px solid #f2f4f8;margin-left:56px}
+.act{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:10px;font-size:12.8px;color:var(--muted);transition:.16s;font-weight:500}
+.act:hover{background:#f4f5f9;color:var(--ink2)}
+.act.on{color:var(--brand);background:var(--soft)}
+.act.danger:hover{background:#fff1f0;color:#e8324a}
+.act svg{width:16px;height:16px}
+.post-foot .spacer{margin-left:auto}
+.empty{padding:52px 20px;text-align:center;color:var(--muted);font-size:13.5px}
+.empty b{display:block;font-size:15px;color:var(--ink2);margin-bottom:6px;font-weight:600}
+.empty svg{width:38px;height:38px;margin:0 auto 14px;color:#d8dce5;stroke-width:1.4}
+
+/* 右栏 */
+.right{position:sticky;top:28px;display:flex;flex-direction:column;gap:14px;max-height:calc(100vh - 56px);overflow:auto;padding-bottom:8px}
+.right .card{padding:16px 18px}
+.right h3{font-size:12px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);margin:0 0 12px;font-weight:600}
+.rec-item{display:flex;align-items:center;gap:10px;padding:8px 0}
+.rec-item + .rec-item{border-top:1px solid #f4f5f9}
+.rec-who{min-width:0;flex:1}
+.rec-name{font-size:13.5px;font-weight:600;line-height:1.3}
+.rec-sub{font-size:11px;color:var(--muted)}
+.rec-btn{padding:5px 12px;border-radius:9px;font-size:12px;font-weight:600;color:var(--brand);background:var(--soft);transition:.16s;flex:none}
+.rec-btn:hover{background:#ffdce3}
+.about p{font-size:12.8px;color:var(--ink2);line-height:1.75;margin:0 0 12px}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:13px}
+.stat-cell{background:#f8f9fb;border-radius:11px;padding:8px 10px}
+.stat-cell b{display:block;font-size:16px;font-weight:650;letter-spacing:-.4px;font-variant-numeric:tabular-nums}
+.stat-cell span{font-size:11px;color:var(--muted)}
+.about .btn-line{width:100%;justify-content:center;font-size:12.5px;padding:9px}
+.about p code{font-family:"Cascadia Mono",Consolas,monospace;font-size:11.5px;background:#f3f4f7;padding:1px 5px;border-radius:5px;color:#5c6272}
+.reset-btn{display:block;width:100%;margin-top:7px;padding:4px;font-size:11.5px;color:#c3c7d1;transition:.16s}
+.reset-btn:hover{color:var(--brand)}
+.foot-note{text-align:center;font-size:11px;color:#b6bac4;line-height:1.7}
+
+/* ============ 抽屉 / 弹窗 ============ */
+.backdrop{position:fixed;inset:0;background:rgba(24,26,34,.28);backdrop-filter:blur(3px);z-index:70;opacity:0;pointer-events:none;transition:.28s}
+.backdrop.on{opacity:1;pointer-events:auto}
+.drawer{
+  position:fixed;top:0;right:0;bottom:0;width:min(500px,100%);background:#fff;z-index:80;
+  transform:translateX(102%);transition:transform .38s cubic-bezier(.32,.72,.28,1);
+  display:flex;flex-direction:column;box-shadow:-24px 0 60px -30px rgba(20,22,30,.45);
+}
+.drawer.on{transform:none}
+.dr-head{display:flex;align-items:center;gap:10px;padding:18px 20px;border-bottom:1px solid var(--line);flex:none}
+.dr-head h3{margin:0;font-size:16px;font-weight:650;letter-spacing:-.3px}
+.dr-head .sub{font-size:11.5px;color:var(--muted);margin-top:1px}
+.close-btn{margin-left:auto;width:34px;height:34px;border-radius:10px;display:grid;place-items:center;color:var(--muted);transition:.16s}
+.close-btn:hover{background:#f3f4f8;color:var(--ink)}
+.dr-body{flex:1;overflow:auto;padding:16px 20px 20px}
+.origin-post{padding:14px 15px;border-radius:15px;background:#fafafb;border:1px solid #f0f2f6;margin-bottom:18px}
+.origin-post .op-head{display:flex;gap:9px;align-items:center;margin-bottom:9px}
+.origin-post .op-name{font-size:13.5px;font-weight:600}
+.origin-post .op-time{font-size:11px;color:var(--muted)}
+.origin-post p{margin:0;font-size:14px;line-height:1.72;color:#2c2e36;white-space:pre-wrap;word-break:break-word}
+.cmt{display:flex;gap:10px;padding:12px 0;animation:rise .35s both}
+.cmt + .cmt{border-top:1px solid #f4f5f9}
+.cmt-body{flex:1;min-width:0}
+.cmt-top{display:flex;align-items:baseline;gap:7px}
+.cmt-name{font-size:13px;font-weight:600}
+.cmt-time{font-size:10.5px;color:#b6bac4;font-variant-numeric:tabular-nums}
+.cmt-text{font-size:13.8px;line-height:1.7;color:#2c2e36;margin-top:3px;word-break:break-word;white-space:pre-wrap}
+.cmt-reply{margin-top:8px;padding:7px 11px;border-radius:11px;background:#f7f8fb;border-left:2px solid #e2e6ef;
+  font-size:12.8px;line-height:1.65;color:#4a4f5a;display:flex;gap:8px;align-items:flex-start}
+.cmt-reply.is-author{background:var(--soft);border-left-color:#ffc1cb;color:#8a3a2a}
+.cmt-reply .cr-body{flex:1;min-width:0;word-break:break-word}
+.cmt-reply b{font-weight:650;color:#5a6270}
+.cmt-reply.is-author b{color:#e8324a}
+.re-to{color:#9aa2b1;font-weight:400}
+.cr-time{margin-left:8px;font-size:10.5px;color:#b6bac4;white-space:nowrap}
+.cr-acts{display:flex;gap:2px;flex:none;opacity:.5;transition:.15s}
+.cmt-reply:hover .cr-acts{opacity:1}
+.cr-acts button{font-size:11px;color:var(--muted);padding:1px 6px;border-radius:6px}
+.cr-acts button:hover{background:#fff;color:var(--ink2)}
+.pill-host{background:#eef4ff;color:#4a6cf7}
+.cmt-acts{display:flex;gap:2px;margin-top:4px}
+.cmt-acts button{font-size:11.5px;color:var(--muted);padding:3px 7px;border-radius:7px;transition:.15s}
+.cmt-acts button:hover{background:#f4f5f9;color:var(--ink2)}
+.dr-foot{flex:none;padding:12px 20px 16px;border-top:1px solid var(--line);background:#fff}
+.reply-to{display:none;align-items:center;gap:6px;font-size:11.5px;color:var(--muted);margin-bottom:8px;padding-left:2px}
+.reply-to.on{display:flex}
+.reply-to b{color:var(--brand);font-weight:600}
+.reply-to button{margin-left:auto;color:#b6bac4;font-size:15px;line-height:1}
+.input-row{display:flex;gap:9px;align-items:flex-end}
+.input-row textarea{
+  flex:1;border:1px solid var(--line);border-radius:13px;padding:10px 13px;resize:none;font-size:14px;
+  min-height:44px;max-height:120px;background:#fafbfc;transition:.18s;line-height:1.6;
+}
+.input-row textarea:focus{background:#fff;border-color:#ffc1cb;box-shadow:0 0 0 4px rgba(255,45,70,.08)}
+.send-btn{width:44px;height:44px;border-radius:13px;display:grid;place-items:center;color:#fff;flex:none;
+  background:linear-gradient(135deg,var(--brand),var(--brand3));box-shadow:0 10px 20px -12px rgba(255,31,61,.9);transition:.18s}
+.send-btn:hover{transform:translateY(-1px)}
+.send-btn:disabled{opacity:.4;transform:none;box-shadow:none;cursor:not-allowed}
+
+.modal{position:fixed;inset:0;z-index:90;display:none;align-items:center;justify-content:center;padding:24px}
+.modal.on{display:flex}
+.modal-card{background:#fff;border-radius:22px;padding:26px;width:100%;max-width:400px;box-shadow:0 40px 90px -40px rgba(20,22,30,.6);animation:pop .3s cubic-bezier(.2,.8,.3,1) both}
+@keyframes pop{from{opacity:0;transform:scale(.94) translateY(8px)}to{opacity:1;transform:none}}
+.modal-card h4{margin:0 0 8px;font-size:17px;font-weight:650;letter-spacing:-.3px}
+.modal-card p{margin:0 0 20px;font-size:13.5px;color:var(--muted);line-height:1.7}
+.modal-acts{display:flex;gap:9px;justify-content:flex-end}
+.people-card{max-width:430px}
+.ppl-list{max-height:min(52vh,360px);overflow:auto;margin:2px 0 18px}
+.ppl-item{display:flex;align-items:center;gap:10px;padding:9px 2px;border-bottom:1px solid #f4f5f9}
+.ppl-item:last-child{border-bottom:0}
+.ppl-who{flex:1;min-width:0}
+.ppl-name{font-size:13.5px;font-weight:600;line-height:1.3}
+.ppl-sub{font-size:11px;color:var(--muted)}
+.ppl-empty{padding:22px 0;text-align:center;font-size:12.5px;color:#b6bac4}
+.rec-btn.on{background:#eef4ff;color:#4a6cf7}
+.btn-danger{display:inline-flex;align-items:center;padding:9px 18px;border-radius:11px;font-size:13.5px;font-weight:600;color:#fff;background:linear-gradient(135deg,#ff5a4a,#e8382d);box-shadow:0 10px 20px -12px rgba(232,56,45,.8);transition:.18s}
+.btn-danger:hover{transform:translateY(-1px)}
+
+/* 终端弹窗 */
+.terminal-card{background:#12141a;border-radius:18px;width:100%;max-width:700px;overflow:hidden;box-shadow:0 50px 100px -40px rgba(0,0,0,.7);animation:pop .3s both;border:1px solid #23262f}
+.tm-bar{display:flex;align-items:center;gap:7px;padding:11px 14px;background:#181b22;border-bottom:1px solid #23262f}
+.tm-dot{width:11px;height:11px;border-radius:50%}
+.tm-title{margin-left:10px;font-size:11.5px;color:#7b8194;font-family:"Cascadia Mono",Consolas,monospace}
+.tm-close{margin-left:auto;color:#5c6274;padding:4px 7px;border-radius:6px;font-size:15px;line-height:1}
+.tm-close:hover{background:#23262f;color:#c8ccd8}
+.tm-screen{
+  height:min(54vh,440px);overflow:auto;padding:16px 20px;
+  font-family:"Cascadia Mono",Consolas,"Courier New",monospace;font-size:12.5px;line-height:1.85;
+  color:#c9d1e0;
+}
+.tm-line{white-space:pre-wrap;word-break:break-word}
+.tm-line.echo{color:#8ab4ff}
+.tm-line.ok{color:#7ee2a8}
+.tm-line.err{color:#ff9d8a}
+.tm-line.dim{color:#6b7284}
+.tm-line.q{color:#9fabc2}
+.tm-foot{display:flex;align-items:center;gap:8px;padding:11px 18px;border-top:1px solid #23262f;background:#15181e}
+.tm-prompt{color:#ffb86b;font-family:"Cascadia Mono",Consolas,monospace;font-size:12.5px;white-space:nowrap;flex:none}
+.tm-input{flex:1;min-width:0;background:transparent;border:0;outline:none;color:#e8eefc;
+  font-family:"Cascadia Mono",Consolas,monospace;font-size:12.5px;caret-color:#ffb86b}
+.tm-input::placeholder{color:#4a505f}
+
+/* 提示 */
+.toasts{position:fixed;left:50%;bottom:36px;transform:translateX(-50%);z-index:120;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}
+.toast{
+  display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:12px;font-size:13px;font-weight:500;
+  background:rgba(21,22,27,.92);color:#fff;box-shadow:0 18px 40px -18px rgba(0,0,0,.6);
+  animation:toastIn .32s cubic-bezier(.2,.8,.3,1) both;backdrop-filter:blur(8px);
+}
+.toast.ok svg{color:#7ee2a8}
+.toast.err svg{color:#ff8d7a}
+@keyframes toastIn{from{opacity:0;transform:translateY(12px) scale(.96)}to{opacity:1;transform:none}}
+.toast.out{animation:toastOut .3s both}
+@keyframes toastOut{to{opacity:0;transform:translateY(-6px) scale(.97)}}
+
+/* ============ 响应式 ============ */
+@media (max-height:880px){
+  .art-inner h1{margin-top:34px;font-size:34px}
+  .art-cards{height:212px}
+  .mini-card.c2{top:110px}
+  .mini-card.c3{display:none}
+}
+@media (max-height:660px){
+  .art-cards{display:none}
+  .art-menu{display:none}
+}
+@media (max-width:1120px){
+  .app{grid-template-columns:222px minmax(0,1fr);gap:22px}
+  .right{display:none}
+}
+@media (max-width:880px){
+  .composer-hint{display:none}
+  .m-user .mu-name{display:none}
+  .m-brand .bn{font-size:15px}
+  .app{grid-template-columns:1fr;padding:0 14px 90px;gap:14px}
+  .rail{display:none}
+  .login{grid-template-columns:1fr;align-content:start}
+  .login-art{padding:26px 22px 22px;border-right:0;border-bottom:1px solid rgba(255,90,110,.12);overflow:visible}
+  .art-inner{height:auto}
+  .art-inner h1{margin-top:16px;font-size:25px;letter-spacing:-.8px}
+  .art-desc{display:none}
+  .art-cards{display:none}
+  .art-menu{display:none}
+  .art-foot{display:none}
+  .login-panel{padding:26px 22px 40px}
+  .mobile-tabs{display:flex;gap:6px;padding:5px;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow-sm);position:sticky;top:8px;z-index:20}
+  .mt-btn{flex:1;padding:8px;border-radius:10px;font-size:13px;font-weight:500;color:var(--muted);transition:.18s}
+  .mt-btn.active{background:var(--soft);color:var(--brand);font-weight:600}
+  .m-brand{display:flex}
+  .topbar{flex-wrap:wrap;gap:10px}
+  .search{width:100%;margin-left:0}
+  .search:focus-within{width:100%}
+  .post-foot{margin-left:0}
+  .post{padding:16px 16px 6px}
+  .drawer{width:100%}
+}
+@media (max-width:520px){
+  .topbar .tb-title{font-size:20px}
+  .composer{padding:14px}
+  .avatar{width:40px;height:40px;border-radius:12px;font-size:15px}
+  .toasts{left:14px;right:14px;transform:none;bottom:20px}
+}
+</style>
+</head>
+<body>
+
+<div id="root">
+
+  <!-- ==================== 登录 ==================== -->
+  <div class="login" id="login">
+    <div class="login-art">
+      <div class="glow a"></div><div class="glow b"></div>
+      <div class="art-inner">
+        <div class="brand-row">
+          <div class="logo"><svg viewBox="0 0 24 24"><rect x="3.4" y="4.4" width="17.2" height="15.2" rx="4"/><path d="M7.6 10.1h8.8M7.6 14.2h5.4"/></svg></div>
+          <div>
+            <div class="brand-name">单机版小红书</div>
+            <div class="brand-sub">C++ 课程大作业 · 2024</div>
+          </div>
+        </div>
+        <h1>欢迎您来到<br><em>单机版小红书</em>。</h1>
+        <p class="art-desc">我大一上学期的 C++ 程序设计基础课程的大作业，用 C++ 实现一个单机版的小红书。如今给它加了个前端，看看当年都干了些什么。</p>
+        <div class="art-menu">
+          <span><b>1</b>发布内容</span>
+          <span><b>2</b>删除自己的</span>
+          <span><b>3</b>回复评论</span>
+          <span><b>4</b>看所有人的</span>
+          <span><b>5</b>看关注的</span>
+        </div>
+        <div class="art-cards">
+          <div class="mini-card c1">
+            <div class="mc-head"><span class="mc-av">泱</span>宁瑾泱<span class="mc-time">19:34</span></div>
+            <p>宁瑾诚管管你家人不要整天说我在打复活赛了好吗好的（）</p>
+          </div>
+          <div class="mini-card c2">
+            <div class="mc-head"><span class="mc-av" style="background:linear-gradient(140deg,#7f9cf5,#5a67d8)">源</span>尚清源<span class="mc-time">19:13</span></div>
+            <p>火车不开，自家开！</p>
+          </div>
+          <div class="mini-card c3">
+            <div class="mc-head"><span class="mc-av" style="background:linear-gradient(140deg,#4fd1c5,#38a89d)">天</span>秦诣天<span class="mc-time">14:48</span></div>
+            <p>西瓜大，西瓜甜，西瓜不沙不要钱！（？</p>
+          </div>
+        </div>
+        <div class="art-foot" id="artFoot"></div>
+      </div>
+    </div>
+    <div class="login-panel">
+      <div class="form-wrap" id="loginStep"></div>
+      <div class="hint">原程序用 <code>users.txt / contents.txt / comments.txt / follows.txt</code> 存数据<br>同一批数据，只是终于有了界面</div>
+    </div>
+  </div>
+
+  <!-- ==================== 主应用 ==================== -->
+  <div class="app" id="app" style="display:none">
+    <aside class="rail">
+      <div class="rail-brand">
+        <div class="logo"><svg viewBox="0 0 24 24"><rect x="3.4" y="4.4" width="17.2" height="15.2" rx="4"/><path d="M7.6 10.1h8.8M7.6 14.2h5.4"/></svg></div>
+        <div>
+          <div class="bn">单机版小红书</div>
+          <div class="bs">C++ COURSEWORK 2024</div>
+        </div>
+      </div>
+      <nav class="nav" id="nav"></nav>
+      <div class="profile-card" id="profileCard"></div>
+      <div class="rail-foot">
+        <button class="term-btn" data-act="terminal">
+          <svg class="i" viewBox="0 0 24 24"><path d="m4 17 6-6-6-6M12 19h8"/></svg>
+          原始版本 · 控制台
+        </button>
+        <div class="backend-state" id="backendState"></div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <div class="m-brand">
+          <div class="logo"><svg viewBox="0 0 24 24"><rect x="3.4" y="4.4" width="17.2" height="15.2" rx="4"/><path d="M7.6 10.1h8.8M7.6 14.2h5.4"/></svg></div>
+          <span class="bn">单机版小红书</span>
+          <div class="m-user" id="mUser"></div>
+        </div>
+        <div>
+          <div class="tb-title" id="tbTitle">广场</div>
+          <div class="tb-sub" id="tbSub"></div>
+        </div>
+        <label class="search">
+          <svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input id="search" placeholder="搜索动态或用户" autocomplete="off">
+        </label>
+      </div>
+
+      <div class="mobile-tabs" id="mobileTabs"></div>
+
+      <div class="composer card" id="composer">
+        <div class="avatar" id="composerAvatar">?</div>
+        <div class="composer-body">
+          <textarea id="composerText" rows="2" maxlength="200" placeholder="写点什么…"></textarea>
+          <div class="composer-bar">
+            <span class="composer-hint">Ctrl / ⌘ + Enter 发布</span>
+            <span class="char-count" id="charCount">0 / 200</span>
+            <button class="btn-primary" data-act="publish">发布</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="feed" id="feed"></div>
+    </main>
+
+    <aside class="right" id="right"></aside>
+  </div>
+
+  <!-- 遮罩 & 抽屉 -->
+  <div class="backdrop" id="backdrop" data-act="closeDrawer"></div>
+  <div class="drawer" id="drawer">
+    <div class="dr-head">
+      <div>
+        <h3>评论</h3>
+        <div class="sub" id="drawerSub"></div>
+      </div>
+      <button class="close-btn" data-act="closeDrawer">
+        <svg class="i" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="dr-body" id="drawerBody"></div>
+    <div class="dr-foot">
+      <div class="reply-to" id="replyTo"><span>正在回复</span><b id="replyName"></b><button data-act="cancelReply">&times;</button></div>
+      <div class="input-row">
+        <textarea id="cmtInput" rows="1" maxlength="200" placeholder="说点什么…"></textarea>
+        <button class="send-btn" id="cmtSend" data-act="sendComment">
+          <svg class="i" viewBox="0 0 24 24"><path d="M22 2 11 13M22 2 15 22l-4-9-9-4 20-7z"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 确认弹窗 -->
+  <div class="modal" id="confirmModal">
+    <div class="backdrop on" data-act="confirmNo" style="z-index:-1"></div>
+    <div class="modal-card">
+      <h4 id="cfTitle">确认删除？</h4>
+      <p id="cfDesc"></p>
+      <div class="modal-acts">
+        <button class="btn-line" data-act="confirmNo">取消</button>
+        <button class="btn-danger" id="cfOk" data-act="confirmYes">确认删除</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 原始控制台弹窗 -->
+  <div class="modal" id="termModal">
+    <div class="backdrop on" data-act="closeTerm" style="z-index:-1"></div>
+    <div class="terminal-card">
+      <div class="tm-bar">
+        <span class="tm-dot" style="background:#ff5f57"></span>
+        <span class="tm-dot" style="background:#febc2e"></span>
+        <span class="tm-dot" style="background:#28c840"></span>
+        <span class="tm-title">C:\Users\HUAWEI\Homework\x64\Debug\Homework.exe</span>
+        <button class="tm-close" data-act="closeTerm">&times;</button>
+      </div>
+      <div class="tm-screen" id="termScreen"></div>
+      <div class="tm-foot">
+        <span class="tm-prompt" id="termPrompt">&gt;</span>
+        <input class="tm-input" id="termInput" autocomplete="off" spellcheck="false" placeholder="输入后回车">
+      </div>
+    </div>
+  </div>
+
+  <!-- 关注 / 粉丝名单 -->
+  <div class="modal" id="peopleModal">
+    <div class="backdrop on" data-act="closePeople" style="z-index:-1"></div>
+    <div class="modal-card people-card">
+      <h4 id="pplTitle">我的关注</h4>
+      <div class="ppl-list" id="pplList"></div>
+      <div class="modal-acts">
+        <button class="btn-line" data-act="closePeople">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toasts" id="toasts"></div>
+</div>
+
+<script>
+/* =========================================================
+   单机版小红书 · Web 版
+   数据结构对照原程序：
+   users.txt    → state.users     phone pwd name
+   contents.txt → state.posts     phone / name / time / content
+   comments.txt → state.comments  no phone / content / name / comment
+   follows.txt  → state.follows   userphone / fophone / foname
+   ========================================================= */
+
+const KEY = 'xiaohongshu.web.v1';
+
+/* ---------- 状态 ---------- */
+// 通过 http(s) 打开时说明有 C++ 后端在跑；直接双击文件则是纯前端模式（数据在浏览器 localStorage）
+// 打包进 Android app 时从 appassets 加载：默认离线，数据存在手机 WebView 的 localStorage
+const IN_APP = location.hostname === 'appassets.androidplatform.net';
+const API = (!IN_APP && /^https?:$/.test(location.protocol)) ? 'api' : null;
+const BACKEND = { mode: IN_APP ? 'app' : (API ? 'cpp' : 'local'), files: null, db: null, error: '' };
+
+let S = loadState();
+let tab = 'square';
+let query = '';
+let drawerPostId = null;
+let authorFilter = null;
+let replyTarget = null;
+
+function clone(o){ return JSON.parse(JSON.stringify(o)); }
+function loadState(){
+  try{
+    const raw = localStorage.getItem(KEY);
+    if (raw){
+      const s = JSON.parse(raw);
+      if (s && Array.isArray(s.users) && Array.isArray(s.comments)) return s;
+    }
+  }catch(e){}
+  return { users: [], posts: [], comments: [], follows: [], currentPhone: null };
+}
+function save(){
+  try{
+    if (API) localStorage.setItem(KEY + '.session', S.currentPhone || '');
+    else localStorage.setItem(KEY, JSON.stringify(S));
+  }catch(e){}
+}
+
+/* ---------- 后端调用 ---------- */
+async function call(path, payload){
+  const r = await fetch(API + '/' + path, payload ? {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  } : {});
+  return r.json();
+}
+async function pull(){
+  const keep = S.currentPhone;
+  const d = await call('state');
+  S = { users: d.users, posts: d.posts, comments: d.comments, follows: d.follows, currentPhone: keep };
+  BACKEND.files = d.files || null;
+  if (d.db) BACKEND.db = d.db;
+  normalizeReplies();
+}
+// comments.txt 里没有作者字段，「博主回复：」是拼在正文里的，拿回来要拆开
+function normalizeReplies(){
+  S.comments.forEach(c => {
+    if (c.replies) return;
+    const p = S.posts.find(x => x.id === c.postId);
+    const parsed = parseCommentText(c.text);
+    c.text = parsed.main;
+    c.replies = parsed.replies.map(t => ({ name: p ? p.name : '博主', text: t, time: c.time }));
+  });
+}
+
+/* ---------- 工具 ---------- */
+const el = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = p => p + Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-3);
+
+const PALETTES = [
+  ['#ff8a5c','#ff5f6d'], ['#ffb347','#ff7b54'], ['#7f9cf5','#5a67d8'],
+  ['#4fd1c5','#38a89d'], ['#b794f4','#805ad5'], ['#f6a5c0','#e75480']
+];
+function pal(seed){
+  let h = 0;
+  for (const ch of String(seed)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return PALETTES[h % PALETTES.length];
+}
+function avatarHTML(name, phone, cls=''){
+  const p = pal(phone || name);
+  return `<div class="avatar ${cls}" style="--a:${p[0]};--b:${p[1]}">${esc((name || '?').slice(0,1))}</div>`;
+}
+function maskPhone(p){
+  return p || '';      // 号码都是编的，不做打码
+}
+function fmtTime(iso){
+  const d = new Date(iso);
+  if (isNaN(d)) return iso;
+  const p = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+function relTime(iso){
+  const d = new Date(iso); if (isNaN(d)) return '';
+  const diff = Date.now() - d.getTime();
+  if (diff < 0) return '刚刚';
+  const m = Math.floor(diff/60000);
+  if (m < 1) return '刚刚';
+  if (m < 60) return m + ' 分钟前';
+  const h = Math.floor(m/60);
+  if (h < 24) return h + ' 小时前';
+  const day = Math.floor(h/24);
+  if (day < 30) return day + ' 天前';
+  return '';
+}
+function me(){ return S.users.find(u => u.phone === S.currentPhone) || null; }
+function userByPhone(p){ return S.users.find(u => u.phone === p); }
+function isFollowing(phone){
+  const m = me(); if (!m) return false;
+  return S.follows.some(f => f.userphone === m.phone && f.fophone === phone);
+}
+function postsOf(phone){ return S.posts.filter(p => p.phone === phone); }
+function commentsOf(postId){
+  return S.comments.filter(c => c.postId === postId).sort((a,b)=> new Date(a.time) - new Date(b.time));
+}
+function commentCount(postId){
+  return commentsOf(postId).reduce((n,c) => n + 1 + ((c.replies && c.replies.length) || 0), 0);
+}
+function followersOf(phone){ return S.follows.filter(f => f.fophone === phone); }
+
+const ICON = {
+  square: '<svg class="i" viewBox="0 0 24 24"><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/></svg>',
+  follow: '<svg class="i" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>',
+  mine:   '<svg class="i" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+  cmt:    '<svg class="i" viewBox="0 0 24 24"><path d="M21 11.5a8 8 0 0 1-8.5 8L7 21l.9-4.2A8 8 0 1 1 21 11.5z"/></svg>',
+  trash:  '<svg class="i" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4.8h6V7M6.5 7l.9 12.2h9.2L17.5 7"/></svg>',
+  check:  '<svg class="i" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>',
+  phone:  '<svg class="i" viewBox="0 0 24 24"><rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M11 18.5h2"/></svg>',
+  lock:   '<svg class="i" viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="10" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></svg>',
+  user:   '<svg class="i" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+  arrow:  '<svg class="i" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>',
+  edit:   '<svg class="i" viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>'
+};
+
+/* ---------- 提示 ---------- */
+function toast(msg, type=''){
+  const box = el('#toasts');
+  const t = document.createElement('div');
+  t.className = 'toast ' + type;
+  const icon = type === 'ok' ? ICON.check : (type === 'err' ? '<svg class="i" viewBox="0 0 24 24"><path d="M12 8v5M12 16.5h.01"/><circle cx="12" cy="12" r="9"/></svg>' : '');
+  t.innerHTML = icon + '<span>' + esc(msg) + '</span>';
+  box.appendChild(t);
+  setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 320); }, 2400);
+}
+
+/* ---------- 弹窗控制 ---------- */
+let cfCallback = null;
+function confirmDialog({title, desc, ok='确认删除', cb}){
+  el('#cfTitle').textContent = title;
+  el('#cfDesc').textContent = desc;
+  el('#cfOk').textContent = ok;
+  cfCallback = cb;
+  el('#confirmModal').classList.add('on');
+}
+function closeConfirm(){ el('#confirmModal').classList.remove('on'); cfCallback = null; }
+
+/* =========================================================
+   登录流程（复刻原程序：手机号 → 密码 / 注册）
+   ========================================================= */
+let loginState = { step:'phone', phone:'', name:'', pwd:'', tries:0, code:'' };
+
+function renderArtStats(){
+  const af = el('#artFoot');
+  if (!af) return;
+  af.innerHTML = `<span>${S.users.length} 位用户</span>`
+    + `<span>${S.posts.length} 条动态</span>`
+    + `<span>${S.comments.length} 条评论</span>`
+    + `<span>${API ? '1 个 SQLite 库' : '0 个数据库'}</span>`;
+}
+
+function renderLogin(){
+  renderArtStats();
+  const box = el('#loginStep');
+  if (loginState.step === 'phone'){
+    box.innerHTML = `
+      <div class="step-tag">Step 1 / 2 · 验证手机号</div>
+      <h2>欢迎回来</h2>
+      <p class="sub">直接点下面的账号就能进；也可以手动输手机号，没注册过会带你走一遍注册流程。</p>
+      <label class="field">
+        ${ICON.phone}
+        <input id="inPhone" inputmode="numeric" maxlength="11" placeholder="请输入手机号" value="${esc(loginState.phone)}" autocomplete="off">
+      </label>
+      <div class="err" id="loginErr"></div>
+      <button class="btn-primary" data-act="loginNext">继续</button>
+      <div class="divider"><span>已有账号，点一下直接进（共 ${S.users.length} 位）</span></div>
+      <div class="chips">
+        ${S.users.map(u => `
+          <button class="chip" data-act="quickLogin" data-phone="${u.phone}">
+            ${avatarHTML(u.name, u.phone, 'sm')}
+            <span>
+              <span class="ch-name">${esc(u.name)}</span><br>
+              <span class="ch-phone">${maskPhone(u.phone)} · 密码 <b class="ch-pwd">${esc(u.pwd)}</b></span>
+            </span>
+            <span class="ch-go">›</span>
+          </button>`).join('')}
+      </div>`;
+    const inp = el('#inPhone');
+    inp.addEventListener('input', () => { inp.value = inp.value.replace(/\D/g,''); loginState.phone = inp.value; });
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') loginNext(); });
+    setTimeout(() => inp.focus(), 80);
+  }
+
+  else if (loginState.step === 'pwd'){
+    const u = userByPhone(loginState.phone);
+    box.innerHTML = `
+      <button class="back" data-act="loginBack">${ICON.arrow} 换个号码</button>
+      <div class="step-tag">Step 2 / 2 · 登录</div>
+      <h2>你好，${esc(u ? u.name : '')}</h2>
+      <p class="sub">这个手机号已经注册过了，请输入密码。</p>
+      <label class="field">
+        ${ICON.lock}
+        <input id="inPwd" type="password" placeholder="请输入密码" autocomplete="current-password">
+      </label>
+      <div class="err" id="loginErr" style="min-height:22px">${loginState.tries ? `密码不对，还可以再试 ${3 - loginState.tries} 次（原程序的规矩）` : ''}</div>
+      <button class="btn-primary" data-act="loginPwd">登录</button>
+      <div class="hint" style="margin-top:18px">忘记密码？这毕竟是个 txt 文件当数据库的项目，密码就在 users.txt 里。</div>`;
+    const inp = el('#inPwd');
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') doLoginPwd(); });
+    setTimeout(() => inp.focus(), 80);
+  }
+
+  else if (loginState.step === 'reg'){
+    box.innerHTML = `
+      <button class="back" data-act="loginBack">${ICON.arrow} 换个号码</button>
+      <div class="step-tag">Step 2 / 2 · 注册</div>
+      <h2>第一次来？</h2>
+      <p class="sub">手机号还没注册过。设个密码，取个昵称，就进去了。</p>
+      <label class="field">
+        ${ICON.lock}
+        <input id="inPwd1" type="password" placeholder="设置密码（至少 8 位）">
+      </label>
+      <label class="field">
+        ${ICON.lock}
+        <input id="inPwd2" type="password" placeholder="再输一遍密码">
+      </label>
+      <label class="field">
+        ${ICON.user}
+        <input id="inName" maxlength="12" placeholder="给自己取个昵称" value="${esc(loginState.name)}">
+      </label>
+      <div class="err" id="loginErr" style="min-height:34px"></div>
+      <button class="btn-primary" data-act="regNext">下一步</button>
+      <div class="hint" style="margin-top:18px">密码要求：≥ 8 位，且同时包含数字、大写字母、小写字母</div>`;
+    setTimeout(() => el('#inPwd1').focus(), 80);
+  }
+
+  else if (loginState.step === 'cap'){
+    box.innerHTML = `
+      <button class="back" data-act="regBack">${ICON.arrow} 返回</button>
+      <div class="step-tag">Step 3 / 3 · 验证码</div>
+      <h2>最后一步</h2>
+      <p class="sub">照抄下面这 4 个字母，注册就完成了。</p>
+      <div class="cap-row">
+        <div class="cap">${loginState.code.split('').map(c => `<span>${c}</span>`).join('')}</div>
+        <button class="btn-line" data-act="capRefresh" style="padding:7px 12px;font-size:12px">换一个</button>
+      </div>
+      <label class="field" style="margin-top:14px">
+        ${ICON.check}
+        <input id="inCap" maxlength="4" placeholder="输入验证码" autocomplete="off" style="text-transform:uppercase;letter-spacing:3px">
+      </label>
+      <div class="err" id="loginErr"></div>
+      <button class="btn-primary" data-act="capDone">完成注册</button>`;
+    setTimeout(() => el('#inCap').focus(), 80);
+  }
+}
+
+function loginErr(msg){ const e = el('#loginErr'); if (e) e.textContent = msg; }
+
+/* 原 function.cpp 里的手机号校验规则 */
+function validPhone(p){
+  if (!/^\d{11}$/.test(p)) return false;
+  if (p[0] !== '1') return false;
+  if (p[1] < '3' || p[1] > '9') return false;
+  return true;
+}
+/* 原 function.cpp 里的密码校验规则 */
+function validPwd(p){
+  if (p.length < 8) return '密码长度至少 8 位';
+  if (!/^[A-Za-z0-9]+$/.test(p)) return '密码含有非法字符';
+  if (!/\d/.test(p)) return '密码中必须有数字';
+  if (!/[A-Z]/.test(p)) return '密码中必须有大写字母';
+  if (!/[a-z]/.test(p)) return '密码中必须有小写字母';
+  return '';
+}
+
+function loginNext(){
+  const p = loginState.phone.trim();
+  if (!p) return loginErr('请输入手机号');
+  if (!validPhone(p)) return loginErr('抱歉，这不是一个有效的手机号');
+  const u = userByPhone(p);
+  loginState.tries = 0;
+  loginState.step = u ? 'pwd' : 'reg';
+  renderLogin();
+}
+async function quickLogin(phone){
+  const u = userByPhone(phone);
+  if (!u) return toast('账号不存在', 'err');
+  loginState.phone = phone;
+  if (API){
+    try{
+      const r = await call('login', { phone, pwd: u.pwd });
+      if (!r.ok) return toast(r.error || '登录失败', 'err');
+      await pull();
+    }catch(e){ return toast('连不上 C++ 后端', 'err'); }
+  }
+  loginState.tries = 0;
+  enterApp(phone);
+}
+function wrongPwd(msg){
+  loginState.tries++;
+  if (loginState.tries >= 3){
+    toast('密码错误 3 次，按原程序该退出了', 'err');
+    loginState = { step:'phone', phone:'', name:'', pwd:'', tries:0, code:'' };
+    renderLogin();
+    return;
+  }
+  renderLogin();
+  if (msg) loginErr(msg);
+}
+async function doLoginPwd(){
+  const v = el('#inPwd').value;
+  if (!v) return loginErr('请输入密码');
+  if (API){
+    try{
+      const r = await call('login', { phone: loginState.phone, pwd: v });
+      if (!r.ok) return wrongPwd(r.error || '密码不正确');
+      await pull();
+      enterApp(loginState.phone);
+    }catch(e){ loginErr('连不上 C++ 后端：' + e.message); }
+    return;
+  }
+  const u = userByPhone(loginState.phone);
+  if (v !== u.pwd) return wrongPwd('');
+  enterApp(u.phone);
+}
+function regNext(){
+  const p1 = el('#inPwd1').value, p2 = el('#inPwd2').value, nm = el('#inName').value.trim();
+  const err = validPwd(p1);
+  if (err) return loginErr(err);
+  if (p1 !== p2) return loginErr('两次输入的密码不一致');
+  if (!nm) return loginErr('还没取昵称呢');
+  loginState.pwd = p1; loginState.name = nm;
+  loginState.code = Array.from({length:4}, () => String.fromCharCode(65 + Math.floor(Math.random()*26))).join('');
+  loginState.step = 'cap';
+  renderLogin();
+}
+async function capDone(){
+  const v = el('#inCap').value.trim().toUpperCase();
+  if (v !== loginState.code) return loginErr('验证码不正确，请重新输入');
+  const nu = { phone: loginState.phone, pwd: loginState.pwd, name: loginState.name };
+  if (API){
+    try{
+      const r = await call('register', nu);
+      if (!r.ok) return loginErr(r.error || '注册失败');
+      await pull();
+    }catch(e){ return loginErr('连不上 C++ 后端：' + e.message); }
+  } else {
+    S.users.push(nu);
+    save();
+  }
+  enterApp(nu.phone);
+  toast('注册成功，欢迎你，' + nu.name, 'ok');
+}
+
+function enterApp(phone){
+  S.currentPhone = phone;
+  save();
+  loginState = { step:'phone', phone:'', name:'', pwd:'', tries:0, code:'' };
+  el('#login').classList.add('hide');
+  el('#app').style.display = '';
+  tab = 'square'; query = ''; el('#search').value = '';
+  renderAll();
+  const u = me();
+  toast('登录成功，欢迎回来 ' + u.name, 'ok');
+}
+
+function logout(){
+  confirmDialog({
+    title:'退出登录？',
+    desc:'数据会留在本地，下次用手机号还能进来。',
+    ok:'退出',
+    cb(){
+      S.currentPhone = null; save();
+      closeDrawer();
+      el('#app').style.display = 'none';
+      el('#login').classList.remove('hide');
+      loginState = { step:'phone', phone:'', name:'', pwd:'', tries:0, code:'' };
+      renderLogin();
+    }
+  });
+}
+
+/* =========================================================
+   渲染
+   ========================================================= */
+const TAB_META = {
+  square: { title:'广场',   desc:'所有人在这里的碎碎念' },
+  follow: { title:'关注',   desc:'你关注的人最近说了什么' },
+  mine:   { title:'我的发布', desc:'你在这个广场留下的痕迹' }
+};
+
+function renderAll(){
+  renderNav(); renderProfile(); renderFeed(); renderRight(); renderComposerAvatar(); renderTabs();
+}
+
+function renderNav(){
+  const m = me(); if (!m) return;
+  const followingPhones = S.follows.filter(f => f.userphone === m.phone).map(f => f.fophone);
+  const items = [
+    { k:'square', label:'广场',     icon:ICON.square, count:S.posts.length },
+    { k:'follow', label:'关注',     icon:ICON.follow, count:S.posts.filter(p => followingPhones.includes(p.phone)).length },
+    { k:'mine',   label:'我的发布', icon:ICON.mine,   count:postsOf(m.phone).length }
+  ];
+  el('#nav').innerHTML = items.map(it => `
+    <button class="nav-item ${tab===it.k?'active':''}" data-act="tab" data-tab="${it.k}">
+      ${it.icon}<span>${it.label}</span>${it.count === null ? '' : `<span class="n-count">${it.count}</span>`}
+    </button>`).join('');
+}
+function renderTabs(){
+  el('#mobileTabs').innerHTML = ['square','follow','mine'].map(k => `
+    <button class="mt-btn ${tab===k?'active':''}" data-act="tab" data-tab="${k}">${TAB_META[k].title}</button>`).join('');
+}
+let peopleKind = 'following';
+function openPeople(kind){
+  const m = me(); if (!m) return;
+  if (kind) peopleKind = kind;
+  const rows = peopleKind === 'following'
+    ? S.follows.filter(f => f.userphone === m.phone)
+    : S.follows.filter(f => f.fophone === m.phone);
+  el('#pplTitle').textContent = (peopleKind === 'following' ? '我关注的' : '关注我的') + ' · ' + rows.length;
+  el('#pplList').innerHTML = rows.length ? rows.map(f => {
+    const phone = peopleKind === 'following' ? f.fophone : f.userphone;
+    const name = nameOf(phone);
+    const on = isFollowing(phone);
+    return `
+      <div class="ppl-item">
+        ${avatarHTML(name, phone, 'sm')}
+        <div class="ppl-who" data-act="viewUser" data-phone="${phone}" style="cursor:pointer">
+          <div class="ppl-name">${esc(name)}</div>
+          <div class="ppl-sub">${maskPhone(phone)} · ${postsOf(phone).length} 条动态</div>
+        </div>
+        <button class="rec-btn ${on ? 'on' : ''}" data-act="toggleFollow" data-phone="${phone}">${on ? '已关注' : '关注'}</button>
+      </div>`;
+  }).join('') : `<div class="ppl-empty">${peopleKind === 'following' ? '还没有关注任何人' : '还没有人关注你'}</div>`;
+  el('#peopleModal').classList.add('on');
+}
+
+function nameOf(phone){
+  const u = userByPhone(phone);
+  if (u) return u.name;
+  const p = S.posts.find(x => x.phone === phone);
+  if (p) return p.name;
+  const c = S.comments.find(x => x.phone === phone);
+  if (c) return c.name;
+  return phone;
+}
+
+function renderProfile(){
+  const m = me(); if (!m) return;
+  el('#profileCard').innerHTML = `
+    <div class="pc-top">
+      ${avatarHTML(m.name, m.phone)}
+      <div style="min-width:0">
+        <div class="pc-name">${esc(m.name)}</div>
+        <div class="pc-phone">${maskPhone(m.phone)}</div>
+      </div>
+    </div>
+    <div class="pc-stats">
+      <button class="pc-stat" data-act="people" data-kind="following">
+        <b>${S.follows.filter(f=>f.userphone===m.phone).length}</b><span>关注</span>
+      </button>
+      <button class="pc-stat" data-act="people" data-kind="followers">
+        <b>${followersOf(m.phone).length}</b><span>粉丝</span>
+      </button>
+    </div>
+    <div class="pc-actions">
+      <button class="btn-ghost" data-act="logout">退出登录</button>
+    </div>
+    <button class="del-account" data-act="deleteAccount">注销账号</button>`;
+  const mu = el('#mUser');
+  if (mu) mu.innerHTML = `
+    ${avatarHTML(m.name, m.phone, 'sm')}
+    <span class="mu-name">${esc(m.name)}</span>
+    <button class="btn-ghost" data-act="logout">退出</button>`;
+}
+function renderComposerAvatar(){
+  const m = me(); if (!m) return;
+  const p = pal(m.phone);
+  const box = el('#composerAvatar');
+  box.textContent = m.name.slice(0,1);
+  box.style.setProperty('--a', p[0]);
+  box.style.setProperty('--b', p[1]);
+}
+
+function currentPosts(){
+  const m = me();
+  let arr = S.posts.slice();
+  if (tab === 'follow'){
+    const following = S.follows.filter(f => f.userphone === m.phone).map(f => f.fophone);
+    arr = arr.filter(p => following.includes(p.phone));
+  } else if (tab === 'mine'){
+    arr = arr.filter(p => p.phone === m.phone);
+  }
+  if (authorFilter) arr = arr.filter(p => p.phone === authorFilter);
+  if (query){
+    const q = query.toLowerCase();
+    arr = arr.filter(p => p.content.toLowerCase().includes(q) || p.name.toLowerCase().includes(q));
+  }
+  return arr.sort((a,b) => new Date(b.time) - new Date(a.time));
+}
+
+function postHTML(p, i){
+  const m = me() || { phone:'', name:'' };
+  const mine = p.phone === m.phone;
+  const n = commentCount(p.id);
+  const following = isFollowing(p.phone);
+  const author = userByPhone(p.phone);
+  const rel = relTime(p.time);
+  return `
+  <article class="post card" style="animation-delay:${Math.min(i,8)*45}ms">
+    <div class="post-head">
+      <button class="av-btn" data-act="viewUser" data-phone="${p.phone}" title="看 TA 的全部动态">${avatarHTML(p.name, p.phone)}</button>
+      <div class="post-who">
+        <div class="post-name">
+          ${esc(p.name)}
+          ${mine ? '<span class="pill">我</span>' : (following ? '<span class="pill" style="background:#eef4ff;color:#4a6cf7">已关注</span>' : '')}
+        </div>
+        <div class="post-meta">
+          <span>${maskPhone(p.phone)}</span><i></i>
+          <span>${fmtTime(p.time)}</span>
+          ${rel ? `<i></i><span>${rel}</span>` : ''}
+        </div>
+      </div>
+    </div>
+    <p class="post-content">${esc(p.content)}</p>
+    <div class="post-foot">
+      <button class="act" data-act="openCmt" data-id="${p.id}">
+        ${ICON.cmt}${n ? n + ' 条评论' : '评论'}
+      </button>
+      ${!mine && author ? `
+        <button class="act ${following?'on':''}" data-act="toggleFollow" data-phone="${p.phone}">
+          ${following ? ICON.check + '已关注' : ICON.follow + '关注'}
+        </button>` : ''}
+      ${mine ? `<button class="act danger" data-act="delPost" data-id="${p.id}">${ICON.trash}删除</button>` : ''}
+      <span class="spacer"></span>
+      <span class="muted" style="font-size:11.5px">#${String(S.posts.indexOf(p)+1).padStart(2,'0')}</span>
+    </div>
+  </article>`;
+}
+
+function renderFeed(){
+  const arr = currentPosts();
+  const meta = TAB_META[tab];
+  if (authorFilter){
+    el('#tbTitle').textContent = nameOf(authorFilter) + ' 的动态';
+    el('#tbSub').innerHTML = `${arr.length} 条 · <button class="txt-link" data-act="clearAuthor">查看全部</button>`;
+  } else {
+    el('#tbTitle').textContent = query ? '搜索结果' : meta.title;
+    el('#tbSub').textContent = query ? `“${query}” · 找到 ${arr.length} 条` : `${meta.desc} · ${arr.length} 条`;
+  }
+  el('#composer').style.display = (tab === 'follow') ? 'none' : '';
+
+  if (!arr.length){
+    el('#feed').innerHTML = `
+      <div class="card empty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M21 11.5a8 8 0 0 1-8.5 8L7 21l.9-4.2A8 8 0 1 1 21 11.5z"/></svg>
+        <b>${query ? '没搜到相关内容' : (tab === 'follow' ? '你关注的人还没发过内容' : '这里还没有内容')}</b>
+        ${query ? '换个关键词试试' : (tab === 'follow' ? '去广场看看，关注几个人吧' : '在上面的输入框里写第一条吧')}
+      </div>`;
+    return;
+  }
+  el('#feed').innerHTML = arr.map(postHTML).join('');
+}
+
+function renderRight(){
+  const m = me(); if (!m) return;
+  const recs = S.users.filter(u => u.phone !== m.phone && !isFollowing(u.phone));
+  const d = new Date();
+  el('#right').innerHTML = `
+    <div class="card">
+      <h3>可能认识的人 · ${recs.length}</h3>
+      ${recs.length ? recs.slice(0, 5).map(u => `
+        <div class="rec-item">
+          ${avatarHTML(u.name, u.phone, 'sm')}
+          <div class="rec-who">
+            <div class="rec-name">${esc(u.name)}</div>
+            <div class="rec-sub">${postsOf(u.phone).length} 条动态 · ${followersOf(u.phone).length} 粉丝</div>
+          </div>
+          <button class="rec-btn" data-act="toggleFollow" data-phone="${u.phone}">关注</button>
+        </div>`).join('')
+        + (recs.length > 5 ? `<div style="font-size:11.5px;color:#b6bac4;padding-top:10px">还有 ${recs.length - 5} 位用户可以关注</div>` : '')
+        : `<div style="font-size:12.5px;color:#b6bac4;padding:4px 0 2px">你已经把所有人（${S.users.length} 位）都关注了</div>`}
+    </div>
+    <div class="card about">
+      <h3>关于这个项目</h3>
+      <p>左栏底部那个控制台，是照原程序菜单复刻的，想回味可以进去敲两下。</p>
+      <div class="stat-grid">
+        <div class="stat-cell"><b>${S.users.length}</b><span>注册用户</span></div>
+        <div class="stat-cell"><b>${S.posts.length}</b><span>动态</span></div>
+        <div class="stat-cell"><b>${S.comments.length}</b><span>评论</span></div>
+        <div class="stat-cell"><b>${S.follows.length}</b><span>关注关系</span></div>
+      </div>
+      <button class="reset-btn" data-act="reset">${API ? '重新从数据库加载' : '清空本地数据'}</button>
+    </div>
+    <div class="foot-note">
+      ${API
+        ? '单机版小红书 · 数据来自 C++ 后端<br>' + (BACKEND.db
+            ? `${BACKEND.db.engine} · ${BACKEND.db.path}`
+            : '连接中…')
+        : '单机版小红书 · 纯前端模式<br>数据存在浏览器 localStorage'}
+    </div>`;
+}
+
+/* =========================================================
+   评论抽屉
+   ========================================================= */
+function openDrawer(postId){
+  drawerPostId = postId; replyTarget = null;
+  renderDrawer();
+  el('#backdrop').classList.add('on');
+  el('#drawer').classList.add('on');
+  setTimeout(() => el('#cmtInput').focus(), 380);
+}
+function closeDrawer(){
+  drawerPostId = null; replyTarget = null;
+  el('#backdrop').classList.remove('on');
+  el('#drawer').classList.remove('on');
+  el('#cmtInput').value = '';
+  el('#replyTo').classList.remove('on');
+}
+function commentHTML(c){
+  const m = me() || { phone:'', name:'' };
+  const rs = c.replies || [];
+  const mine = c.phone === m.phone;
+  const post = S.posts.find(x => x.id === c.postId);
+  const authorName = post ? post.name : '';
+  const who = (name, to) => {
+    const base = name === authorName ? '博主回复' : esc(name) + ' 回复';
+    return to ? base + ' <span class="re-to">@' + esc(to) + '</span>' : base;
+  };
+  return `
+    <div class="cmt">
+      <button class="av-btn" data-act="viewUser" data-phone="${c.phone}" title="看 TA 的全部动态">${avatarHTML(c.name, c.phone, 'sm')}</button>
+      <div class="cmt-body">
+        <div class="cmt-top">
+          <span class="cmt-name">${esc(c.name)}</span>
+          ${c.name === authorName ? '<span class="pill pill-host">博主</span>' : ''}
+          ${mine ? '<span class="pill" style="padding:1px 6px;font-size:10px">我</span>' : ''}
+          <span class="cmt-time">${relTime(c.time) || fmtTime(c.time)}</span>
+        </div>
+        <div class="cmt-text">${esc(c.text)}</div>
+        ${rs.map(r => `
+          <div class="cmt-reply ${r.name === authorName ? 'is-author' : ''}">
+            <div class="cr-body">
+              <b>${who(r.name, r.to)}：</b>${esc(r.text)}<span class="cr-time">${fmtTime(r.time)}</span>
+            </div>
+            <div class="cr-acts">
+              <button data-act="replyTo" data-id="${c.id}" data-name="${esc(r.name)}" data-to="${esc(r.name)}">回复</button>
+              ${r.phone && r.phone === m.phone && r.id ? `<button data-act="delCmt" data-id="${r.id}">删除</button>` : ''}
+            </div>
+          </div>`).join('')}
+        <div class="cmt-acts">
+          <button data-act="replyTo" data-id="${c.id}" data-name="${esc(c.name)}">回复</button>
+          ${mine ? `<button data-act="delCmt" data-id="${c.id}">删除</button>` : ''}
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderDrawer(){
+  if (!drawerPostId) return;
+  const p = S.posts.find(x => x.id === drawerPostId);
+  if (!p){ closeDrawer(); return; }
+  const list = commentsOf(p.id);
+  const total = commentCount(p.id);
+
+  el('#drawerSub').textContent = `${total} 条评论 · ${postsOf(p.phone).length} 条动态`;
+  el('#drawerBody').innerHTML = `
+    <div class="origin-post">
+      <div class="op-head">
+        ${avatarHTML(p.name, p.phone, 'sm')}
+        <div>
+          <div class="op-name">${esc(p.name)}</div>
+          <div class="op-time">${fmtTime(p.time)}</div>
+        </div>
+      </div>
+      <p>${esc(p.content)}</p>
+    </div>
+    ${list.length ? list.map(commentHTML).join('')
+      : `<div class="empty" style="padding:34px 0">
+           <b>还没有人评论</b>来坐第一个沙发
+         </div>`}`;
+}
+async function sendComment(){
+  const ta = el('#cmtInput');
+  const text = ta.value.trim();
+  if (!text) return toast('评论不能为空');
+  const m = me();
+  const now = new Date().toISOString();
+  if (API){
+    try{
+      const r = await call('comment/create', {
+        postId: drawerPostId, phone: m.phone, text,
+        parentId: replyTarget ? replyTarget.parentId : '',
+        to: replyTarget ? replyTarget.to : ''
+      });
+      if (!r.ok) return toast(r.error || '评论失败', 'err');
+      await pull();
+    }catch(e){ return toast('连不上 C++ 后端', 'err'); }
+  } else if (replyTarget){
+    const target = S.comments.find(x => x.id === replyTarget.parentId);
+    if (target){
+      target.replies = target.replies || [];
+      target.replies.push({ name: m.name, text, time: now, to: replyTarget.to });
+    }
+  } else {
+    S.comments.push({
+      id: uid('c'), postId: drawerPostId, phone: m.phone, name: m.name,
+      text, time: now, replies: []
+    });
+  }
+  if (!API) save();
+  ta.value = ''; ta.rows = 1;
+  replyTarget = null;
+  el('#replyTo').classList.remove('on');
+  ta.placeholder = '说点什么…';
+  renderDrawer(); renderFeed(); renderNav();
+  toast('评论成功', 'ok');
+  const body = el('#drawerBody');
+  body.scrollTop = body.scrollHeight;
+}
+
+/* =========================================================
+   交互
+   ========================================================= */
+document.addEventListener('click', async e => {
+  const t = e.target.closest('[data-act]');
+  if (!t) return;
+  const act = t.dataset.act;
+
+  switch(act){
+    case 'loginNext': loginNext(); break;
+    case 'loginBack':
+      loginState.step = 'phone'; loginState.tries = 0; renderLogin(); break;
+    case 'loginPwd': doLoginPwd(); break;
+    case 'pickAcct': {
+      loginState.phone = t.dataset.phone; loginState.step = 'pwd'; renderLogin(); break;
+    }
+    case 'quickLogin': {
+      await quickLogin(t.dataset.phone);
+      break;
+    }
+    case 'regNext': regNext(); break;
+    case 'regBack': loginState.step = 'reg'; renderLogin(); break;
+    case 'capRefresh':
+      loginState.code = Array.from({length:4}, () => String.fromCharCode(65 + Math.floor(Math.random()*26))).join('');
+      renderLogin(); break;
+    case 'capDone': capDone(); break;
+
+    case 'tab': {
+      tab = t.dataset.tab; query = ''; el('#search').value = ''; authorFilter = null;
+      renderAll(); window.scrollTo({top:0, behavior:'smooth'}); break;
+    }
+    case 'publish': publish(); break;
+    case 'openCmt': openDrawer(t.dataset.id); break;
+    case 'closeDrawer': closeDrawer(); break;
+    case 'cancelReply': replyTarget = null; el('#replyTo').classList.remove('on'); break;
+    case 'replyTo': {
+      const c = S.comments.find(x => x.id === t.dataset.id);
+      if (!c) break;
+      replyTarget = { parentId: c.id, name: t.dataset.name || c.name, to: t.dataset.to || '' };
+      const rt = el('#replyTo');
+      rt.classList.add('on');
+      el('#replyName').textContent = replyTarget.to || replyTarget.name;
+      el('#cmtInput').placeholder = '回复 ' + el('#replyName').textContent + '…';
+      el('#cmtInput').focus();
+      break;
+    }
+    case 'sendComment': sendComment(); break;
+    case 'delPost': {
+      const p = S.posts.find(x => x.id === t.dataset.id);
+      if (!p) break;
+      confirmDialog({
+        title:'删除这条动态？',
+        desc:'评论也会一起消失。后端会和原程序一样，把手机号写成 ## 当墓碑。',
+        async cb(){
+          if (API){
+            const r = await call('post/delete', { id: p.id, phone: me().phone });
+            if (!r.ok) return toast(r.error || '删除失败', 'err');
+            await pull();
+          } else {
+            S.posts = S.posts.filter(x => x.id !== p.id);
+            S.comments = S.comments.filter(x => x.postId !== p.id);
+            save();
+          }
+          if (drawerPostId === p.id) closeDrawer();
+          renderAll(); toast('已删除', 'ok');
+        }
+      });
+      break;
+    }
+    case 'delCmt': {
+      const c = S.comments.find(x => x.id === t.dataset.id);
+      if (!c) break;
+      if (API){
+        const r = await call('comment/delete', { id: c.id, phone: me().phone });
+        if (!r.ok) return toast(r.error || '删除失败', 'err');
+        await pull();
+      } else {
+        S.comments = S.comments.filter(x => x.id !== c.id);
+        save();
+      }
+      renderDrawer(); renderFeed(); renderNav(); toast('评论已删除', 'ok');
+      break;
+    }
+    case 'toggleFollow': {
+      const phone = t.dataset.phone;
+      const m = me();
+      if (phone === m.phone) break;
+      const i = S.follows.findIndex(f => f.userphone === m.phone && f.fophone === phone);
+      const on = i >= 0;
+      if (API){
+        const r = await call('follow', { phone: m.phone, target: phone, action: on ? 'remove' : 'add' });
+        if (!r.ok) return toast(r.error || '操作失败', 'err');
+        await pull();
+      } else {
+        if (on) S.follows.splice(i, 1);
+        else {
+          const u = userByPhone(phone);
+          S.follows.push({ userphone: m.phone, fophone: phone, foname: u ? u.name : '' });
+        }
+        save();
+      }
+      const u = userByPhone(phone);
+      toast(on ? '已取消关注' : '已关注 ' + (u ? u.name : ''), on ? '' : 'ok');
+      renderAll();
+      if (el('#peopleModal').classList.contains('on')) openPeople();
+      break;
+    }
+    case 'viewUser': {
+      const phone = t.dataset.phone;
+      if (!phone) break;
+      authorFilter = phone;
+      query = ''; el('#search').value = '';
+      tab = 'square';
+      el('#peopleModal').classList.remove('on');
+      closeDrawer();
+      renderAll();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      break;
+    }
+    case 'clearAuthor': { authorFilter = null; renderAll(); break; }
+    case 'logout': logout(); break;
+    case 'deleteAccount': {
+      const m2 = me(); if (!m2) break;
+      confirmDialog({
+        title: '注销这个账号？',
+        desc: m2.name + ' 将无法再登录、也不会出现在登录列表里，但发过的动态和评论都保留。',
+        ok: '注销',
+        async cb(){
+          const r = await call('user/delete', { phone: m2.phone });
+          if (!r.ok) return toast(r.error || '注销失败', 'err');
+          S.currentPhone = null;
+          save();
+          await pull();
+          el('#app').style.display = 'none';
+          el('#login').classList.remove('hide');
+          loginState = { step:'phone', phone:'', name:'', pwd:'', tries:0, code:'' };
+          renderLogin();
+          toast('账号已注销，内容都留着', 'ok');
+        }
+      });
+      break;
+    }
+    case 'confirmYes': {
+      const cb = cfCallback;
+      closeConfirm();
+      if (cb) cb();
+      break;
+    }
+    case 'confirmNo': closeConfirm(); break;
+    case 'terminal': openTerminal(); break;
+    case 'people': openPeople(t.dataset.kind); break;
+    case 'viewUser': {
+      const phone = t.dataset.phone;
+      if (!phone) break;
+      authorFilter = phone;
+      query = ''; el('#search').value = '';
+      tab = 'square';
+      el('#peopleModal').classList.remove('on');
+      closeDrawer();
+      renderAll();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      break;
+    }
+    case 'clearAuthor': { authorFilter = null; renderAll(); break; }
+    case 'logout': logout(); break;
+    case 'deleteAccount': {
+      const m2 = me(); if (!m2) break;
+      confirmDialog({
+        title: '注销这个账号？',
+        desc: m2.name + ' 将无法再登录、也不会出现在登录列表里，但发过的动态和评论都保留。',
+        ok: '注销',
+        async cb(){
+          const r = await call('user/delete', { phone: m2.phone });
+          if (!r.ok) return toast(r.error || '注销失败', 'err');
+          S.currentPhone = null;
+          save();
+          await pull();
+          el('#app').style.display = 'none';
+          el('#login').classList.remove('hide');
+          loginState = { step:'phone', phone:'', name:'', pwd:'', tries:0, code:'' };
+          renderLogin();
+          toast('账号已注销，内容都留着', 'ok');
+        }
+      });
+      break;
+    }
+    case 'confirmYes': {
+      const cb = cfCallback;
+      closeConfirm();
+      if (cb) cb();
+      break;
+    }
+    case 'confirmNo': closeConfirm(); break;
+    case 'terminal': openTerminal(); break;
+    case 'people': openPeople(t.dataset.kind); break;
+    case 'closePeople': el('#peopleModal').classList.remove('on'); break;
+    case 'closeTerm': el('#termModal').classList.remove('on'); break;
+    case 'reset': {
+      if (API){
+        confirmDialog({
+          title:'重新从数据库读取？',
+          desc:'重新拉一次 /api/state，把数据库里的最新内容刷到页面上。',
+          ok:'重新读取',
+          async cb(){
+            await pull();
+            tab = 'square'; query = ''; el('#search').value = '';
+            renderAll();
+            toast('已从数据库重新加载', 'ok');
+          }
+        });
+      } else {
+        confirmDialog({
+          title:'清空本地数据？',
+          desc:'会丢掉你在本机发的动态和评论，恢复成空白状态。',
+          ok:'清空',
+          cb(){
+            const keep = S.currentPhone;
+            S = { users: [], posts: [], comments: [], follows: [], currentPhone: keep };
+            save();
+            tab = 'square'; query = ''; el('#search').value = '';
+            renderAll();
+            toast('已清空本地数据', 'ok');
+          }
+        });
+      }
+      break;
+    }
+  }
+});
+
+async function publish(){
+  const ta = el('#composerText');
+  const text = ta.value.trim();
+  if (!text){ toast('说点什么再发布吧'); return; }
+  const m = me();
+  if (API){
+    try{
+      const r = await call('post/create', { phone: m.phone, content: text });
+      if (!r.ok) return toast(r.error || '发布失败', 'err');
+      await pull();
+    }catch(e){ return toast('连不上 C++ 后端', 'err'); }
+  } else {
+    S.posts.push({
+      id: uid('p'), phone: m.phone, name: m.name,
+      time: new Date().toISOString(), content: text
+    });
+    save();
+  }
+  ta.value = ''; ta.style.height = 'auto';
+  updateCount();
+  renderAll();
+  toast('发布成功', 'ok');
+}
+
+/* 输入框 */
+function updateCount(){
+  const ta = el('#composerText');
+  el('#charCount').textContent = ta.value.length + ' / 200';
+}
+el('#composerText').addEventListener('input', function(){
+  this.style.height = 'auto';
+  this.style.height = Math.min(this.scrollHeight, 220) + 'px';
+  updateCount();
+});
+el('#composerText').addEventListener('keydown', e => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') publish();
+});
+el('#cmtInput').addEventListener('input', function(){
+  this.rows = Math.min(4, Math.max(1, this.value.split('\n').length));
+});
+el('#cmtInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); sendComment(); }
+});
+el('#termInput').addEventListener('keydown', function(e){
+  if (e.key === 'Enter'){
+    const v = this.value;
+    if (T.step === 'idle' || T.step === 'done') return;
+    termSubmit(v);
+  }
+});
+
+el('#search').addEventListener('input', function(){
+  query = this.value.trim();
+  renderFeed();
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape'){
+    if (el('#confirmModal').classList.contains('on')) closeConfirm();
+    else if (el('#termModal').classList.contains('on')) el('#termModal').classList.remove('on');
+    else if (el('#drawer').classList.contains('on')) closeDrawer();
+  }
+});
+
+
+/* =========================================================
+   可交互控制台：真的能敲命令，读写同一套后端数据
+   ========================================================= */
+const T = { step:'idle', prompt:'', phone:'', user:null, tries:0, data:{}, code:'' };
+
+function tw(text, cls){
+  const box = el('#termScreen');
+  const d = document.createElement('div');
+  d.className = 'tm-line' + (cls ? ' ' + cls : '');
+  d.textContent = text;
+  box.appendChild(d);
+  box.scrollTop = box.scrollHeight;
+}
+function tAsk(step, question){
+  T.step = step;
+  T.prompt = question;
+  if (question) tw(question, 'q');
+  el('#termPrompt').textContent = '>';
+  const i = el('#termInput');
+  i.value = '';
+  i.disabled = false;
+  i.focus();
+}
+function tEnd(msg){
+  if (msg) tw(msg, 'ok');
+  tw('已退出控制台。', 'dim');
+  T.step = 'done';
+  el('#termPrompt').textContent = '';
+  const i = el('#termInput');
+  i.disabled = true;
+  i.value = '';
+}
+function tMenu(){
+  tw('');
+  tw('1 发布   2 删除   3 回复   4 浏览   5 关注   # 退出', 'dim');
+  tAsk('menu', '请选择：');
+}
+function tShowMine(){
+  const mine = S.posts.filter(p => p.phone === T.user.phone);
+  T.data.mine = mine;
+  if (!mine.length){ tw('您还没有发布过内容哦~', 'dim'); return tMenu(); }
+  tw('');
+  tw('以下是您发布过的内容：');
+  mine.forEach((p, i) => { tw((i + 1) + '  ' + p.name + '  ' + fmtTime(p.time)); tw('   ' + p.content); tw(''); });
+  return tAsk('delPick', '请选择需要删除的内容（输入序号，0 返回）：');
+}
+function tShowReplyable(){
+  const mine = S.posts.filter(p => p.phone === T.user.phone && S.comments.some(c => c.postId === p.id));
+  T.data.replyPosts = mine;
+  if (!mine.length){ tw('您发布的内容还没有评论哦~', 'dim'); return tMenu(); }
+  tw('');
+  tw('以下是您发布过的内容中带有评论的：');
+  mine.forEach((p, i) => { tw((i + 1) + '  ' + p.name); tw('   ' + p.content); tw(''); });
+  return tAsk('replyPick', '请选择（0 返回）：');
+}
+function tShowAll(){
+  T.data.all = S.posts;
+  if (!S.posts.length){ tw('还没有人发布内容哦~', 'dim'); return tMenu(); }
+  tw('');
+  tw('以下是所有用户发布的内容：');
+  S.posts.forEach((p, i) => { tw((i + 1) + '  ' + p.name + '  ' + fmtTime(p.time)); tw('   ' + p.content); tw(''); });
+  return tAsk('browsePick', '请输入需要查看内容的编号（0 返回）：');
+}
+function tShowFollows(){
+  const fs = S.follows.filter(f => f.userphone === T.user.phone);
+  T.data.follows = fs;
+  if (!fs.length){ tw('您还没有关注的用户哦，快去关注吧~', 'dim'); return tMenu(); }
+  tw('');
+  tw('以下是您关注的用户：');
+  fs.forEach((f, i) => tw((i + 1) + '  ' + maskPhone(f.fophone) + '  ' + f.foname));
+  return tAsk('folPick', '请选择您想要查看的用户编号（0 返回）：');
+}
+
+function termBoot(){
+  el('#termScreen').innerHTML = '';
+  T.step = 'idle'; T.user = null; T.tries = 0; T.data = {}; T.code = '';
+  const i = el('#termInput');
+  i.disabled = false; i.value = '';
+  tw('单机版小红书 · 控制台模式');
+  tw('和网页共用同一份数据，敲的每一下都会写回后端。', 'dim');
+  tw('');
+  if (!API){
+    tw('没有连上 C++ 后端，控制台不可用。', 'err');
+    tw('双击 启动后端.bat，再用 http://localhost:8787 打开本页。', 'dim');
+    T.step = 'done'; el('#termPrompt').textContent = ''; i.disabled = true;
+    return;
+  }
+  tw('欢迎您来到单机版小红书，请登录/注册！', 'ok');
+  tw('（想退出，随时输入 #）', 'dim');
+  tw('');
+  tAsk('phone', '请输入手机号：');
+}
+
+async function termSubmit(raw){
+  if (T.step === 'idle' || T.step === 'done') return;
+  const line = raw.trim();
+  tw('> ' + line, 'echo');
+  switch (T.step){
+    case 'phone': {
+      if (line === '#') return tEnd();
+      if (!validPhone(line)){ tw('抱歉您输入的手机号有误！', 'err'); return tAsk('phone', '请输入手机号：'); }
+      T.phone = line; T.tries = 0;
+      const u = userByPhone(line);
+      if (u){ tw('该手机号已经注册，请登录！'); return tAsk('pwd', '请输入密码：'); }
+      tw('该手机号尚未注册，');
+      return tAsk('regPwd', '请设置密码,密码应包含数字和大小写字母：');
+    }
+    case 'pwd': {
+      if (line === '#') return tEnd();
+      const u = userByPhone(T.phone);
+      if (!u) return tAsk('phone', '请输入手机号：');
+      if (line === u.pwd){
+        T.user = { phone: u.phone, name: u.name };
+        tw('');
+        tw('登录成功！欢迎您，' + u.name + '!', 'ok');
+        return tMenu();
+      }
+      T.tries++;
+      if (T.tries >= 3) return tEnd('密码错误 3 次，已自动退出登录。');
+      tw('密码不正确！已输错密码' + T.tries + '次，错误超过3次将自动退出登录！', 'err');
+      return tAsk('pwd', '请输入密码：');
+    }
+    case 'regPwd': {
+      const err = validPwd(line);
+      if (err){ tw(err, 'err'); return tAsk('regPwd', '请设置密码,密码应包含数字和大小写字母：'); }
+      T.data.pwd = line;
+      tw('密码设置成功！', 'ok');
+      return tAsk('regPwd2', '请再次输入密码：');
+    }
+    case 'regPwd2': {
+      if (line !== T.data.pwd){ tw('两次输入密码不一致！', 'err'); return tAsk('regPwd2', '请再次输入密码：'); }
+      return tAsk('regName', '请设置昵称：');
+    }
+    case 'regName': {
+      T.data.name = line || ('用户' + T.phone);
+      T.code = Array.from({ length: 4 }, () => String.fromCharCode(65 + Math.floor(Math.random() * 26))).join('');
+      return tAsk('regCap', '请输入验证码' + T.code + ':');
+    }
+    case 'regCap': {
+      if (line.toUpperCase() !== T.code){ tw('验证码不正确，请重新输入！', 'err'); return tAsk('regCap', '请输入验证码' + T.code + ':'); }
+      const r = await call('register', { phone: T.phone, pwd: T.data.pwd, name: T.data.name });
+      if (!r.ok){ tw(r.error, 'err'); return tEnd(); }
+      await pull(); renderAll();
+      T.user = { phone: T.phone, name: T.data.name };
+      tw('注册成功！欢迎您，' + T.data.name + '!', 'ok');
+      return tMenu();
+    }
+    case 'menu': {
+      if (line === '#') return tEnd();
+      if (line === '1') return tAsk('postText', '请输入要发布的内容：');
+      if (line === '2') return tShowMine();
+      if (line === '3') return tShowReplyable();
+      if (line === '4') return tShowAll();
+      if (line === '5') return tShowFollows();
+      tw('请输入正确的选项！', 'err');
+      return tMenu();
+    }
+    case 'postText': {
+      if (line === '#') return tEnd();
+      if (!line){ tw('内容不能为空！', 'err'); return tAsk('postText', '请输入要发布的内容：'); }
+      T.data.content = line;
+      return tAsk('postConfirm', '确认发布吗？发布请按‘1’，取消请按‘2’：');
+    }
+    case 'postConfirm': {
+      if (line === '#') return tEnd();
+      if (line === '2'){ tw('已取消发布', 'dim'); return tMenu(); }
+      if (line !== '1'){ tw('请输入正确的选项！', 'err'); return tAsk('postConfirm', '确认发布吗？发布请按‘1’，取消请按‘2’：'); }
+      const r = await call('post/create', { phone: T.user.phone, content: T.data.content });
+      if (!r.ok){ tw(r.error, 'err'); return tMenu(); }
+      await pull(); renderAll();
+      tw('发布成功！', 'ok');
+      return tMenu();
+    }
+    case 'delPick': {
+      if (line === '#') return tEnd();
+      if (line === '0') return tMenu();
+      const n = parseInt(line, 10);
+      const arr = T.data.mine;
+      if (!(n >= 1 && n <= arr.length)){ tw('无第' + line + '个发布内容，请重新输入！', 'err'); return tAsk('delPick', '请选择需要删除的内容（输入序号，0 返回）：'); }
+      T.data.target = arr[n - 1];
+      return tAsk('delConfirm', '是否确认删除？确认按‘1’，取消按‘2’：');
+    }
+    case 'delConfirm': {
+      if (line === '#') return tEnd();
+      if (line === '2'){ tw('已取消操作', 'dim'); return tMenu(); }
+      if (line !== '1'){ tw('请输入正确的选项！', 'err'); return tAsk('delConfirm', '是否确认删除？确认按‘1’，取消按‘2’：'); }
+      const r = await call('post/delete', { id: T.data.target.id, phone: T.user.phone });
+      if (!r.ok){ tw(r.error, 'err'); return tMenu(); }
+      await pull(); renderAll();
+      tw('删除成功！', 'ok');
+      return tMenu();
+    }
+    case 'replyPick': {
+      if (line === '#') return tEnd();
+      if (line === '0') return tMenu();
+      const n = parseInt(line, 10);
+      const arr = T.data.replyPosts;
+      if (!(n >= 1 && n <= arr.length)){ tw('请输入正确的序号！', 'err'); return tAsk('replyPick', '请选择（0 返回）：'); }
+      const post = arr[n - 1];
+      T.data.target = post;
+      const cs = S.comments.filter(c => c.postId === post.id);
+      T.data.cs = cs;
+      tw('');
+      tw(post.name); tw(post.content); tw('');
+      cs.forEach((c, i) => { tw((i + 1) + '  ' + c.name); tw('   ' + c.text); tw(''); });
+      return tAsk('replyNo', "请输入需要回复的评论序号(返回按'0',退出按'-1')：");
+    }
+    case 'replyNo': {
+      if (line === '-1') return tEnd();
+      if (line === '0') return tMenu();
+      const n = parseInt(line, 10);
+      const cs = T.data.cs;
+      if (!(n >= 1 && n <= cs.length)){ tw('无第' + line + '条评论，请重新输入！', 'err'); return tAsk('replyNo', "请输入需要回复的评论序号(返回按'0',退出按'-1')："); }
+      T.data.replyTo = cs[n - 1];
+      return tAsk('replyText', '请输入回复的内容：');
+    }
+    case 'replyText': {
+      if (line === '#') return tEnd();
+      if (!line){ tw('回复不能为空！', 'err'); return tAsk('replyText', '请输入回复的内容：'); }
+      T.data.replyText = line;
+      return tAsk('replyConfirm', '确认回复吗？（确认按‘1’，取消按‘2’）：');
+    }
+    case 'replyConfirm': {
+      if (line === '#') return tEnd();
+      if (line === '2'){ tw('已取消操作', 'dim'); return tMenu(); }
+      if (line !== '1'){ tw('请输入正确的选项！', 'err'); return tAsk('replyConfirm', '确认回复吗？（确认按‘1’，取消按‘2’）：'); }
+      const r = await call('comment/create', { postId: T.data.target.id, phone: T.user.phone, text: T.data.replyText, parentId: T.data.replyTo.id });
+      if (!r.ok){ tw(r.error, 'err'); return tMenu(); }
+      await pull(); renderAll();
+      tw('回复成功！', 'ok');
+      return tMenu();
+    }
+    case 'browsePick': {
+      if (line === '#') return tEnd();
+      if (line === '0') return tMenu();
+      const n = parseInt(line, 10);
+      const arr = T.data.all;
+      if (!(n >= 1 && n <= arr.length)){ tw('请输入正确的编号！', 'err'); return tAsk('browsePick', '请输入需要查看内容的编号（0 返回）：'); }
+      const post = arr[n - 1];
+      T.data.target = post;
+      tw('');
+      tw(post.phone); tw(post.name); tw(post.content);
+      const cs = S.comments.filter(c => c.postId === post.id);
+      if (cs.length){ tw(''); cs.forEach(c => { tw(c.name); tw('   ' + c.text); }); }
+      return tAsk('browseCmt', '您是否要评论？是请按‘1’，否请按‘2’：');
+    }
+    case 'browseCmt': {
+      if (line === '#') return tEnd();
+      if (line === '2'){ tw('已返回', 'dim'); return tMenu(); }
+      if (line === '1') return tAsk('browseText', '请输入评论内容：');
+      tw('请输入正确的选项！', 'err');
+      return tAsk('browseCmt', '您是否要评论？是请按‘1’，否请按‘2’：');
+    }
+    case 'browseText': {
+      if (line === '#') return tEnd();
+      if (!line){ tw('评论不能为空！', 'err'); return tAsk('browseText', '请输入评论内容：'); }
+      const post = T.data.target;
+      const r = await call('comment/create', { postId: post.id, phone: T.user.phone, text: line });
+      if (!r.ok){ tw(r.error, 'err'); return tMenu(); }
+      await pull(); renderAll();
+      tw('评论成功！', 'ok');
+      const following = S.follows.some(f => f.userphone === T.user.phone && f.fophone === post.phone);
+      if (following){ tw('您已关注该用户，已返回', 'dim'); return tMenu(); }
+      return tAsk('browseFollow', '是否关注该用户？(关注请按‘1’，不关注请按‘2’）：');
+    }
+    case 'browseFollow': {
+      if (line === '#') return tEnd();
+      const post = T.data.target;
+      if (line === '1'){
+        const r = await call('follow', { phone: T.user.phone, target: post.phone, action: 'add' });
+        if (!r.ok){ tw(r.error, 'err'); return tMenu(); }
+        await pull(); renderAll();
+        tw('关注成功！', 'ok');
+        return tMenu();
+      }
+      if (line === '2'){ tw('您选择不关注，已返回', 'dim'); return tMenu(); }
+      tw('请输入正确的选项！', 'err');
+      return tAsk('browseFollow', '是否关注该用户？(关注请按‘1’，不关注请按‘2’）：');
+    }
+    case 'folPick': {
+      if (line === '#') return tEnd();
+      if (line === '0') return tMenu();
+      const n = parseInt(line, 10);
+      const arr = T.data.follows;
+      if (!(n >= 1 && n <= arr.length)){ tw('无第' + line + '个关注用户，请重新输入！', 'err'); return tAsk('folPick', '请选择您想要查看的用户编号（0 返回）：'); }
+      const who = arr[n - 1];
+      T.data.who = who;
+      const his = S.posts.filter(p => p.phone === who.fophone);
+      T.data.his = his;
+      if (!his.length){ tw('该用户还没有发布内容哦~', 'dim'); return tMenu(); }
+      tw('');
+      tw('以下是该用户所有的发布内容：');
+      his.forEach((p, i) => { tw((i + 1) + '  ' + fmtTime(p.time)); tw('   ' + p.content); tw(''); });
+      return tAsk('folPost', '请选择需要查看的发布内容（0 返回）：');
+    }
+    case 'folPost': {
+      if (line === '#') return tEnd();
+      if (line === '0') return tMenu();
+      const n = parseInt(line, 10);
+      const his = T.data.his;
+      if (!(n >= 1 && n <= his.length)){ tw('无第' + line + '个发布内容，请重新输入！', 'err'); return tAsk('folPost', '请选择需要查看的发布内容（0 返回）：'); }
+      const post = his[n - 1];
+      T.data.target = post;
+      tw('');
+      tw(post.name); tw(post.content);
+      const cs = S.comments.filter(c => c.postId === post.id);
+      if (cs.length){ tw(''); cs.forEach(c => { tw(c.name); tw('   ' + c.text); }); }
+      return tAsk('folText', '请输入评论内容：');
+    }
+    case 'folText': {
+      if (line === '#') return tEnd();
+      if (!line){ tw('评论不能为空！', 'err'); return tAsk('folText', '请输入评论内容：'); }
+      const r = await call('comment/create', { postId: T.data.target.id, phone: T.user.phone, text: line });
+      if (!r.ok){ tw(r.error, 'err'); return tMenu(); }
+      await pull(); renderAll();
+      tw('评论成功！', 'ok');
+      return tMenu();
+    }
+    default:
+      tw('（状态异常，已重置）', 'err');
+      return tEnd();
+  }
+}
+
+function openTerminal(){
+  el('#termModal').classList.add('on');
+  termBoot();
+  setTimeout(() => el('#termInput').focus(), 60);
+}
+
+/* ---------- 启动 ---------- */
+function updateBackendBadge(){
+  const b = el('#backendState');
+  if (!b) return;
+  if (IN_APP){
+    b.className = 'backend-state local';
+    b.innerHTML = '<i></i>离线模式 · 数据在这台手机上';
+    return;
+  }
+  if (API && BACKEND.mode !== 'error'){
+    b.className = 'backend-state';
+    b.innerHTML = '<i></i>C++ 后端 · 端口 ' + (location.port || '80');
+  } else if (API){
+    b.className = 'backend-state local';
+    b.innerHTML = '<i></i>后端未连接';
+  } else {
+    b.className = 'backend-state local';
+    b.innerHTML = '<i></i>纯前端 · localStorage';
+  }
+}
+
+async function boot(){
+  if (API){
+    try{
+      const d = await call('state');
+      S = {
+        users: d.users, posts: d.posts, comments: d.comments, follows: d.follows,
+        currentPhone: localStorage.getItem(KEY + '.session') || null
+      };
+      BACKEND.files = d.files;
+      if (d.db) BACKEND.db = d.db;
+      BACKEND.mode = d.mode || 'cpp';
+      normalizeReplies();
+    }catch(e){
+      BACKEND.mode = 'error';
+      BACKEND.error = e.message;
+    }
+  }
+  if (S.currentPhone && userByPhone(S.currentPhone)){
+    el('#login').classList.add('hide');
+    el('#app').style.display = '';
+    renderAll();
+  } else {
+    renderLogin();
+  }
+  updateBackendBadge();
+}
+boot();
+</script>
+</body>
+</html>
