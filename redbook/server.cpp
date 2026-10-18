@@ -260,6 +260,14 @@ static void ensureSchema() {
         while (st.row()) if (st.txt(1) == "reply_to") hasReplyTo = true;
     }
     if (!hasReplyTo) dbExec("ALTER TABLE comments ADD COLUMN reply_to TEXT;");
+
+    // 注销账号：软删除，帖子和评论都保留
+    bool hasUserDeleted = false;
+    {
+        Stmt st("PRAGMA table_info(users)");
+        while (st.row()) if (st.txt(1) == "deleted") hasUserDeleted = true;
+    }
+    if (!hasUserDeleted) dbExec("ALTER TABLE users ADD COLUMN deleted INTEGER NOT NULL DEFAULT 0;");
 }
 
 // 把 "评论正文博主回复：回复1博主回复：回复2" 拆开
@@ -441,7 +449,7 @@ static string jsonState() {
 
     o << ",\"users\":[";
     {
-        Stmt st("SELECT phone,pwd,name FROM users ORDER BY rowid");
+        Stmt st("SELECT phone,pwd,name FROM users WHERE deleted=0 ORDER BY rowid");
         bool first = true;
         while (st.row()) {
             if (!first) o << ",";
@@ -521,7 +529,7 @@ static string apiLogin(const string& body) {
     string phone = trim(jget(body, "phone"));
     string pwd = jget(body, "pwd");
     if (!validPhone(phone)) return failJson("手机号格式不正确");
-    Stmt st("SELECT pwd,name FROM users WHERE phone=?");
+    Stmt st("SELECT pwd,name FROM users WHERE phone=? AND deleted=0");
     st.bind(1, phone);
     if (!st.row()) return failJson("该手机号尚未注册");
     if (st.txt(0) != pwd) return failJson("密码不正确");
@@ -535,7 +543,15 @@ static string apiRegister(const string& body) {
     string e = pwdError(pwd);
     if (!e.empty()) return failJson(e);
     if (name.empty()) return failJson("昵称不能为空");
-    if (scalar("SELECT COUNT(*) FROM users WHERE phone=?", phone) > 0) return failJson("该手机号已经注册");
+    if (scalar("SELECT COUNT(*) FROM users WHERE phone=?", phone) > 0) {
+        // 已注销的号允许重新注册（旧帖子和评论会归到新账号名下）
+        if (scalar("SELECT deleted FROM users WHERE phone=?", phone) == 0)
+            return failJson("该手机号已经注册");
+        Stmt up("UPDATE users SET pwd=?, name=?, deleted=0 WHERE phone=?");
+        up.bind(1, pwd); up.bind(2, name); up.bind(3, phone);
+        if (!up.done()) return failJson("写入失败");
+        return okJson("\"user\":{\"phone\":\"" + jesc(phone) + "\",\"name\":\"" + jesc(name) + "\"}");
+    }
     Stmt st("INSERT INTO users(phone,pwd,name) VALUES(?,?,?)");
     st.bind(1, phone); st.bind(2, pwd); st.bind(3, name);
     if (!st.done()) return failJson("写入失败");
@@ -656,6 +672,18 @@ static string apiFollow(const string& body) {
     return okJson();
 }
 
+static string apiDeleteUser(const string& body) {
+    string phone = trim(jget(body, "phone"));
+    if (phone.empty()) return failJson("参数不正确");
+    if (scalar("SELECT COUNT(*) FROM users WHERE phone=? AND deleted=0", phone) == 0)
+        return failJson("账号不存在");
+    // 只标记账号失效：posts / comments / follows 一行都不动
+    Stmt st("UPDATE users SET deleted=1 WHERE phone=?");
+    st.bind(1, phone);
+    if (!st.done()) return failJson("注销失败");
+    return okJson();
+}
+
 // ---------------- HTTP ----------------
 static const char* statusText(int code) {
     switch (code) {
@@ -748,6 +776,7 @@ static void handleClient(SOCKET c) {
         else if (path == "/api/comment/create")  out = apiCreateComment(body);
         else if (path == "/api/comment/delete")  out = apiDeleteComment(body);
         else if (path == "/api/follow")          out = apiFollow(body);
+        else if (path == "/api/user/delete")    out = apiDeleteUser(body);
         else {
             respond(c, 404, "application/json; charset=utf-8", failJson("接口不存在"));
             closesocket(c);

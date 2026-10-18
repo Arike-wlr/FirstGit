@@ -171,6 +171,7 @@ svg{display:block}
 .chip:hover{background:#fff;border-color:#ffcad2;box-shadow:0 8px 20px -16px rgba(20,22,30,.5);transform:translateY(-1px)}
 .chip .ch-name{font-size:13.5px;font-weight:600}
 .chip .ch-phone{font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.chip .ch-pwd{font-weight:500;color:#6b7180;font-family:"Cascadia Mono",Consolas,monospace;font-size:11px;letter-spacing:-.2px}
 .chip .ch-go{margin-left:auto;color:#c3c7d1;font-size:16px;line-height:1}
 .hint{font-size:11.8px;color:#b6bac4;text-align:center;margin-top:24px;line-height:1.7}
 .cap-row{display:flex;gap:10px;align-items:center}
@@ -221,6 +222,8 @@ svg{display:block}
 .pc-stat span{font-size:12px;color:var(--muted)}
 .pc-actions{display:flex;gap:8px}
 .pc-actions .btn-ghost{flex:1;justify-content:center;padding:7px;font-size:12.5px;background:#f7f8fa}
+.del-account{display:block;width:100%;margin-top:7px;padding:3px;font-size:11px;color:#c3c7d1;transition:.16s}
+.del-account:hover{color:#e8324a}
 
 .follow-block{padding:14px 8px 8px;display:flex;flex-direction:column;min-height:0}
 .sec-title{display:flex;align-items:center;font-size:11.5px;color:var(--muted);letter-spacing:1.2px;font-weight:600;padding:0 8px 10px;text-transform:uppercase}
@@ -275,6 +278,11 @@ svg{display:block}
 .post{padding:18px 20px 8px;animation:rise .5s cubic-bezier(.2,.7,.3,1) both}
 @keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 .post-head{display:flex;gap:12px;align-items:flex-start}
+.av-btn{flex:none;border-radius:16px;transition:.16s;display:block}
+.av-btn:hover{transform:translateY(-1px)}
+.av-btn:active{transform:none}
+.txt-link{color:var(--brand);font-size:12.5px;font-weight:500;padding:0 2px}
+.txt-link:hover{text-decoration:underline}
 .post-who{flex:1;min-width:0;padding-top:1px}
 .post-name{display:flex;align-items:center;gap:7px;font-size:14.5px;font-weight:650;letter-spacing:-.15px;line-height:1.3}
 .post-meta{font-size:11.5px;color:var(--muted);margin-top:3px;display:flex;gap:6px;align-items:center;font-variant-numeric:tabular-nums}
@@ -347,6 +355,7 @@ svg{display:block}
 .cmt-reply b{font-weight:650;color:#5a6270}
 .cmt-reply.is-author b{color:#e8324a}
 .re-to{color:#9aa2b1;font-weight:400}
+.cr-time{margin-left:8px;font-size:10.5px;color:#b6bac4;white-space:nowrap}
 .cr-acts{display:flex;gap:2px;flex:none;opacity:.5;transition:.15s}
 .cmt-reply:hover .cr-acts{opacity:1}
 .cr-acts button{font-size:11px;color:var(--muted);padding:1px 6px;border-radius:6px}
@@ -799,6 +808,7 @@ let S = loadState();
 let tab = 'square';
 let query = '';
 let drawerPostId = null;
+let authorFilter = null;
 let replyTarget = null;
 
 function clone(o){ return JSON.parse(JSON.stringify(o)); }
@@ -867,8 +877,7 @@ function avatarHTML(name, phone, cls=''){
   return `<div class="avatar ${cls}" style="--a:${p[0]};--b:${p[1]}">${esc((name || '?').slice(0,1))}</div>`;
 }
 function maskPhone(p){
-  if (!p || p.length !== 11) return p || '';
-  return p.slice(0,3) + '****' + p.slice(7);
+  return p || '';      // 号码都是编的，不做打码
 }
 function fmtTime(iso){
   const d = new Date(iso);
@@ -975,7 +984,7 @@ function renderLogin(){
             ${avatarHTML(u.name, u.phone, 'sm')}
             <span>
               <span class="ch-name">${esc(u.name)}</span><br>
-              <span class="ch-phone">${maskPhone(u.phone)}</span>
+              <span class="ch-phone">${maskPhone(u.phone)} · 密码 <b class="ch-pwd">${esc(u.pwd)}</b></span>
             </span>
             <span class="ch-go">›</span>
           </button>`).join('')}
@@ -1180,6 +1189,7 @@ function logout(){
    ========================================================= */
 const TAB_META = {
   square: { title:'广场',   desc:'所有人在这里的碎碎念' },
+  follow: { title:'关注',   desc:'你关注的人最近说了什么' },
   mine:   { title:'我的发布', desc:'你在这个广场留下的痕迹' }
 };
 
@@ -1189,17 +1199,19 @@ function renderAll(){
 
 function renderNav(){
   const m = me(); if (!m) return;
+  const followingPhones = S.follows.filter(f => f.userphone === m.phone).map(f => f.fophone);
   const items = [
     { k:'square', label:'广场',     icon:ICON.square, count:S.posts.length },
+    { k:'follow', label:'关注',     icon:ICON.follow, count:S.posts.filter(p => followingPhones.includes(p.phone)).length },
     { k:'mine',   label:'我的发布', icon:ICON.mine,   count:postsOf(m.phone).length }
   ];
   el('#nav').innerHTML = items.map(it => `
     <button class="nav-item ${tab===it.k?'active':''}" data-act="tab" data-tab="${it.k}">
-      ${it.icon}<span>${it.label}</span><span class="n-count">${it.count}</span>
+      ${it.icon}<span>${it.label}</span>${it.count === null ? '' : `<span class="n-count">${it.count}</span>`}
     </button>`).join('');
 }
 function renderTabs(){
-  el('#mobileTabs').innerHTML = ['square','mine'].map(k => `
+  el('#mobileTabs').innerHTML = ['square','follow','mine'].map(k => `
     <button class="mt-btn ${tab===k?'active':''}" data-act="tab" data-tab="${k}">${TAB_META[k].title}</button>`).join('');
 }
 let peopleKind = 'following';
@@ -1212,8 +1224,7 @@ function openPeople(kind){
   el('#pplTitle').textContent = (peopleKind === 'following' ? '我关注的' : '关注我的') + ' · ' + rows.length;
   el('#pplList').innerHTML = rows.length ? rows.map(f => {
     const phone = peopleKind === 'following' ? f.fophone : f.userphone;
-    const u = userByPhone(phone);
-    const name = u ? u.name : (f.foname || '');
+    const name = nameOf(phone);
     const on = isFollowing(phone);
     return `
       <div class="ppl-item">
@@ -1226,6 +1237,16 @@ function openPeople(kind){
       </div>`;
   }).join('') : `<div class="ppl-empty">${peopleKind === 'following' ? '还没有关注任何人' : '还没有人关注你'}</div>`;
   el('#peopleModal').classList.add('on');
+}
+
+function nameOf(phone){
+  const u = userByPhone(phone);
+  if (u) return u.name;
+  const p = S.posts.find(x => x.phone === phone);
+  if (p) return p.name;
+  const c = S.comments.find(x => x.phone === phone);
+  if (c) return c.name;
+  return phone;
 }
 
 function renderProfile(){
@@ -1248,7 +1269,8 @@ function renderProfile(){
     </div>
     <div class="pc-actions">
       <button class="btn-ghost" data-act="logout">退出登录</button>
-    </div>`;
+    </div>
+    <button class="del-account" data-act="deleteAccount">注销账号</button>`;
   const mu = el('#mUser');
   if (mu) mu.innerHTML = `
     ${avatarHTML(m.name, m.phone, 'sm')}
@@ -1267,9 +1289,13 @@ function renderComposerAvatar(){
 function currentPosts(){
   const m = me();
   let arr = S.posts.slice();
-  if (tab === 'mine'){
+  if (tab === 'follow'){
+    const following = S.follows.filter(f => f.userphone === m.phone).map(f => f.fophone);
+    arr = arr.filter(p => following.includes(p.phone));
+  } else if (tab === 'mine'){
     arr = arr.filter(p => p.phone === m.phone);
   }
+  if (authorFilter) arr = arr.filter(p => p.phone === authorFilter);
   if (query){
     const q = query.toLowerCase();
     arr = arr.filter(p => p.content.toLowerCase().includes(q) || p.name.toLowerCase().includes(q));
@@ -1287,7 +1313,7 @@ function postHTML(p, i){
   return `
   <article class="post card" style="animation-delay:${Math.min(i,8)*45}ms">
     <div class="post-head">
-      ${avatarHTML(p.name, p.phone)}
+      <button class="av-btn" data-act="viewUser" data-phone="${p.phone}" title="看 TA 的全部动态">${avatarHTML(p.name, p.phone)}</button>
       <div class="post-who">
         <div class="post-name">
           ${esc(p.name)}
@@ -1319,16 +1345,21 @@ function postHTML(p, i){
 function renderFeed(){
   const arr = currentPosts();
   const meta = TAB_META[tab];
-  el('#tbTitle').textContent = query ? '搜索结果' : meta.title;
-  el('#tbSub').textContent = query ? `“${query}” · 找到 ${arr.length} 条` : `${meta.desc} · ${arr.length} 条`;
-  el('#composer').style.display = '';
+  if (authorFilter){
+    el('#tbTitle').textContent = nameOf(authorFilter) + ' 的动态';
+    el('#tbSub').innerHTML = `${arr.length} 条 · <button class="txt-link" data-act="clearAuthor">查看全部</button>`;
+  } else {
+    el('#tbTitle').textContent = query ? '搜索结果' : meta.title;
+    el('#tbSub').textContent = query ? `“${query}” · 找到 ${arr.length} 条` : `${meta.desc} · ${arr.length} 条`;
+  }
+  el('#composer').style.display = (tab === 'follow') ? 'none' : '';
 
   if (!arr.length){
     el('#feed').innerHTML = `
       <div class="card empty">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M21 11.5a8 8 0 0 1-8.5 8L7 21l.9-4.2A8 8 0 1 1 21 11.5z"/></svg>
-        <b>${query ? '没搜到相关内容' : '这里还没有内容'}</b>
-        ${query ? '换个关键词试试' : '在上面的输入框里写第一条吧'}
+        <b>${query ? '没搜到相关内容' : (tab === 'follow' ? '你关注的人还没发过内容' : '这里还没有内容')}</b>
+        ${query ? '换个关键词试试' : (tab === 'follow' ? '去广场看看，关注几个人吧' : '在上面的输入框里写第一条吧')}
       </div>`;
     return;
   }
@@ -1403,19 +1434,19 @@ function commentHTML(c){
   };
   return `
     <div class="cmt">
-      ${avatarHTML(c.name, c.phone, 'sm')}
+      <button class="av-btn" data-act="viewUser" data-phone="${c.phone}" title="看 TA 的全部动态">${avatarHTML(c.name, c.phone, 'sm')}</button>
       <div class="cmt-body">
         <div class="cmt-top">
           <span class="cmt-name">${esc(c.name)}</span>
           ${c.name === authorName ? '<span class="pill pill-host">博主</span>' : ''}
           ${mine ? '<span class="pill" style="padding:1px 6px;font-size:10px">我</span>' : ''}
-          <span class="cmt-time">${relTime(c.time) || fmtTime(c.time).slice(5,16)}</span>
+          <span class="cmt-time">${relTime(c.time) || fmtTime(c.time)}</span>
         </div>
         <div class="cmt-text">${esc(c.text)}</div>
         ${rs.map(r => `
           <div class="cmt-reply ${r.name === authorName ? 'is-author' : ''}">
             <div class="cr-body">
-              <b>${who(r.name, r.to)}：</b>${esc(r.text)}
+              <b>${who(r.name, r.to)}：</b>${esc(r.text)}<span class="cr-time">${fmtTime(r.time)}</span>
             </div>
             <div class="cr-acts">
               <button data-act="replyTo" data-id="${c.id}" data-name="${esc(r.name)}" data-to="${esc(r.name)}">回复</button>
@@ -1521,7 +1552,7 @@ document.addEventListener('click', async e => {
     case 'capDone': capDone(); break;
 
     case 'tab': {
-      tab = t.dataset.tab; query = ''; el('#search').value = '';
+      tab = t.dataset.tab; query = ''; el('#search').value = ''; authorFilter = null;
       renderAll(); window.scrollTo({top:0, behavior:'smooth'}); break;
     }
     case 'publish': publish(); break;
@@ -1602,15 +1633,39 @@ document.addEventListener('click', async e => {
     }
     case 'viewUser': {
       const phone = t.dataset.phone;
-      const u = userByPhone(phone);
-      if (!u) break;
-      query = u.name; el('#search').value = u.name;
+      if (!phone) break;
+      authorFilter = phone;
+      query = ''; el('#search').value = '';
       tab = 'square';
       el('#peopleModal').classList.remove('on');
+      closeDrawer();
       renderAll();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       break;
     }
+    case 'clearAuthor': { authorFilter = null; renderAll(); break; }
     case 'logout': logout(); break;
+    case 'deleteAccount': {
+      const m2 = me(); if (!m2) break;
+      confirmDialog({
+        title: '注销这个账号？',
+        desc: m2.name + ' 将无法再登录、也不会出现在登录列表里，但发过的动态和评论都保留。',
+        ok: '注销',
+        async cb(){
+          const r = await call('user/delete', { phone: m2.phone });
+          if (!r.ok) return toast(r.error || '注销失败', 'err');
+          S.currentPhone = null;
+          save();
+          await pull();
+          el('#app').style.display = 'none';
+          el('#login').classList.remove('hide');
+          loginState = { step:'phone', phone:'', name:'', pwd:'', tries:0, code:'' };
+          renderLogin();
+          toast('账号已注销，内容都留着', 'ok');
+        }
+      });
+      break;
+    }
     case 'confirmYes': {
       const cb = cfCallback;
       closeConfirm();
