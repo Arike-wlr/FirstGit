@@ -34,7 +34,7 @@ using namespace std;
 namespace fs = std::filesystem;
 
 // ---------------- 全局 ----------------
-static string DATA_DIR = "data";          // txt 种子 + 数据库所在目录
+static string DATA_DIR = "data";          // 数据库（SQLite）所在目录
 static string WEB_ROOT = ".";
 static string DB_PATH  = "data/redbook.db";
 static sqlite3* g_db = nullptr;
@@ -292,129 +292,9 @@ static void splitReplies(const string& raw, string& main, vector<string>& replie
     if (main.empty() && !replies.empty()) { main = replies.front(); replies.erase(replies.begin()); }
 }
 
-static void importFromTxt() {
-    if (scalar("SELECT COUNT(*) FROM users") > 0) return;   // 已经导过
-    cout << "[db] 空库，开始从 txt 导入…\n";
-
-    sqlite3_exec(g_db, "BEGIN;", nullptr, nullptr, nullptr);
-
-    int nUsers = 0;
-    {
-        vector<string> L = splitLines(readFileUtf8(DATA_DIR + "/users.txt"));
-        for (const string& ln : L) {
-            string line = trim(ln);
-            if (line.empty()) continue;
-            size_t a = line.find(' ');
-            if (a == string::npos) continue;
-            size_t b = line.find(' ', a + 1);
-            string phone = line.substr(0, a);
-            string pwd, name;
-            if (b == string::npos) pwd = line.substr(a + 1);
-            else { pwd = line.substr(a + 1, b - a - 1); name = trim(line.substr(b + 1)); }
-            if (phone.empty()) continue;
-            Stmt st("INSERT OR IGNORE INTO users(phone,pwd,name) VALUES(?,?,?)");
-            st.bind(1, phone); st.bind(2, pwd); st.bind(3, name);
-            st.done();
-            nUsers++;
-        }
-    }
-
-    int nPosts = 0, nDeleted = 0;
-    {
-        vector<string> L = splitLines(readFileUtf8(DATA_DIR + "/contents.txt"));
-        size_t i = 0;
-        while (i < L.size()) {
-            while (i < L.size() && trim(L[i]).empty()) i++;
-            if (i + 3 >= L.size()) break;
-            string phone = trim(L[i]), name = trim(L[i + 1]), timeRaw = trim(L[i + 2]), content = L[i + 3];
-            i += 4;
-            if (phone.empty()) continue;
-            bool del = (phone == "##");
-            Stmt st("INSERT INTO posts(phone,name,time,content,deleted) VALUES(?,?,?,?,?)");
-            st.bind(1, phone); st.bind(2, name); st.bind(3, isoFromCtime(timeRaw));
-            st.bind(4, content); st.bind(5, del ? 1LL : 0LL);
-            st.done();
-            nPosts++;
-            if (del) nDeleted++;
-        }
-    }
-
-    int nComments = 0;
-    {
-        vector<string> L = splitLines(readFileUtf8(DATA_DIR + "/comments.txt"));
-        size_t i = 0;
-        int k = 0;
-        while (i < L.size()) {
-            while (i < L.size() && trim(L[i]).empty()) i++;
-            if (i + 3 >= L.size()) break;
-            string head = trim(L[i]);
-            size_t sp = head.find(' ');
-            string phone = (sp == string::npos) ? "" : trim(head.substr(sp + 1));
-            string postContent = L[i + 1], cname = trim(L[i + 2]), rawText = L[i + 3];
-            i += 4;
-
-            long long pid = 0;
-            {
-                Stmt q("SELECT id FROM posts WHERE content=? AND deleted=0 ORDER BY id LIMIT 1");
-                q.bind(1, postContent);
-                if (q.row()) pid = q.num(0);
-            }
-            if (!pid) continue;
-            string ptime, pname;
-            {
-                Stmt q("SELECT time,name FROM posts WHERE id=?");
-                q.bind(1, pid);
-                if (q.row()) { ptime = q.txt(0); pname = q.txt(1); }
-            }
-            string main;
-            vector<string> replies;
-            splitReplies(rawText, main, replies);
-            string t = isoAdd(ptime, (k + 1) * 7);
-            k++;
-            long long cid = 0;
-            {
-                Stmt st("INSERT INTO comments(post_id,phone,name,text,time,parent_id) VALUES(?,?,?,?,?,NULL)");
-                st.bind(1, pid); st.bind(2, phone); st.bind(3, cname); st.bind(4, main); st.bind(5, t);
-                st.done();
-                cid = sqlite3_last_insert_rowid(g_db);
-            }
-            int j = 1;
-            for (const string& r : replies) {
-                Stmt st("INSERT INTO comments(post_id,phone,name,text,time,parent_id) VALUES(?,?,?,?,?,?)");
-                st.bind(1, pid); st.bind(2, ""); st.bind(3, pname); st.bind(4, r);
-                st.bind(5, isoAdd(t, j)); st.bind(6, cid);
-                st.done();
-                j++;
-            }
-            nComments++;
-        }
-    }
-
-    int nFollows = 0;
-    {
-        vector<string> raw = splitLines(readFileUtf8(DATA_DIR + "/follows.txt"));
-        vector<string> t;
-        for (const string& ln : raw) if (!trim(ln).empty()) t.push_back(trim(ln));
-        for (size_t i = 0; i + 2 < t.size(); i += 3) {
-            Stmt st("INSERT OR IGNORE INTO follows(user_phone,follow_phone,follow_name) VALUES(?,?,?)");
-            st.bind(1, t[i]); st.bind(2, t[i + 1]); st.bind(3, t[i + 2]);
-            st.done();
-            nFollows++;
-        }
-    }
-
-    sqlite3_exec(g_db, "COMMIT;", nullptr, nullptr, nullptr);
-
-    cout << "[db] 导入完成: " << nUsers << " 用户 / " << nPosts << " 帖（含 "
-         << nDeleted << " 条墓碑）/ " << nComments << " 评论 / " << nFollows << " 关注\n";
-}
 
 // comments.txt 里那一列存的是「帖子作者」，不是评论者；
 // 用昵称反查 users 表，把 phone 修正成评论者本人（幂等，每次启动跑一遍）
-static void fixCommentPhones() {
-    dbExec("UPDATE comments SET phone = (SELECT u.phone FROM users u WHERE u.name = comments.name) "
-           "WHERE EXISTS (SELECT 1 FROM users u WHERE u.name = comments.name);");
-}
 
 // ---------------- 校验 ----------------
 static bool validPhone(const string& p) {
@@ -801,29 +681,12 @@ int main(int argc, char** argv) {
 
     if (!fs::exists(DATA_DIR)) fs::create_directories(DATA_DIR);
 
-    // 数据目录里没有 txt 就从原始 Homework 目录拷一份（只读，仅作导入源）
-    const char* need[] = {"users.txt", "contents.txt", "comments.txt", "follows.txt"};
-    bool anyMissing = false;
-    for (const char* f : need) if (!fs::exists(DATA_DIR + "/" + f)) anyMissing = true;
-    if (anyMissing) {
-        string src = "../Homework/Homework";
-        if (!fs::exists(src + "/users.txt")) src = "../../Homework/Homework";
-        if (fs::exists(src + "/users.txt")) {
-            for (const char* f : need)
-                if (!fs::exists(DATA_DIR + "/" + f))
-                    fs::copy_file(src + "/" + f, DATA_DIR + "/" + f, fs::copy_options::overwrite_existing);
-            cout << "[init] 已从 " << src << " 复制四个 txt 作为导入源\n";
-        }
-    }
-
     if (sqlite3_open(DB_PATH.c_str(), &g_db) != SQLITE_OK) {
         cout << "[error] 打不开数据库 " << DB_PATH << ": " << sqlite3_errmsg(g_db) << "\n";
         return 1;
     }
     sqlite3_busy_timeout(g_db, 3000);
     ensureSchema();
-    importFromTxt();
-    fixCommentPhones();
 
     WSADATA wsa;
     if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) {
