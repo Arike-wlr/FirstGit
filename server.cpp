@@ -221,9 +221,13 @@ static long long scalar(const string& sql, const string& arg = "") {
     return 0;
 }
 
-// ---------------- 建表 + 从 txt 导入 ----------------
+// ---------------- 建表 + 补列 ----------------
 static void ensureSchema() {
-    dbExec("PRAGMA journal_mode=WAL;");
+    // 用 SQLite 默认的 rollback journal（DELETE 模式），不用 WAL。
+    // WAL 会在 data/ 下额外生成 redbook.db-wal 和 redbook.db-shm 两个文件；
+    // 本项目是单线程 accept 循环、单进程访问，用不上 WAL 的并发读写优势，
+    // 一个 redbook.db 更好备份也更好拷给别人。
+    dbExec("PRAGMA journal_mode=DELETE;");
     dbExec(
         "CREATE TABLE IF NOT EXISTS users("
         "  phone TEXT PRIMARY KEY,"

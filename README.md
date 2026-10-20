@@ -26,14 +26,6 @@
 server.exe 8787
 ```
 
-### 安卓版
-
-已构建好的安装包在 `apk/单机版小红书-离线版.apk`，传到手机点安装即可（需允许「安装未知来源应用」）。
-
-App 是**纯离线**的：不连任何服务器，数据存在手机 WebView 的 localStorage 里，和电脑上的数据各管各的。
-
----
-
 ## 项目结构
 
 ```
@@ -43,7 +35,7 @@ redbook/
 ├── server.exe          编译好的后端（.gitignore 已忽略）
 ├── 启动后端.bat        一键启动脚本
 ├── data/
-│   └── redbook.db      SQLite 数据库（首次启动自动创建）
+│   └── redbook.db      SQLite 数据库：四张表全在这一个文件里（首次启动自动创建）
 ├── sqlite3.c/.h/.o     SQLite 3.54.1  amalgamation，直接编进后端
 ├── apk/
 │   └── 单机版小红书-离线版.apk
@@ -65,7 +57,7 @@ redbook/
 |---|---|---|
 | `http://localhost:8787` | C++ 后端 · 端口 8787 | `data/redbook.db`（经后端读写） |
 | 双击 `index.html` | 纯前端 · localStorage | 浏览器 localStorage |
-| 安卓 App | 离线模式 · 数据在这台手机上 | 手机 WebView localStorage |
+| 安卓 App 内打开 | 纯前端 · localStorage | 手机 WebView 的 localStorage |
 
 判定逻辑在 `index.html` 顶部：
 
@@ -80,7 +72,44 @@ const API = (!IN_APP && /^https?:$/.test(location.protocol)) ? 'api' : null;
 
 ## 数据模型
 
-四张表，对应原来的四个 txt：
+### 只有一个 `.db` 文件
+
+`data/` 下就 `redbook.db` 一个文件，四张表 + 两个索引全在里头。
+
+会不会多出伴生文件，取决于 SQLite 的日志模式：
+
+| 模式 | 目录里有什么 | 本项目 |
+|---|---|---|
+| `DELETE`（默认，rollback journal） | 只有 `redbook.db`。事务进行中会临时冒出一个 `redbook.db-journal`，提交即删 | ✅ 当前使用 |
+| `WAL`（write-ahead log） | 常驻 `redbook.db-wal` + `redbook.db-shm`，这就是「看起来像三个数据库」的原因 | ❌ 已弃用 |
+
+之前用的是 WAL，后来换回默认模式，原因很实际：
+
+- 后端是单线程 `accept` 循环，一次只处理一个请求（另有 `sqlite3_busy_timeout` 3 秒兜底），**没有并发读写需要照顾**，WAL 的并发优势用不上；
+- 单机课设场景几乎不会断电崩盘，WAL 的抗崩溃收益也不明显；
+- 代价却是目录里多两个文件，备份要拷三个，拷给别人还得解释哪个是哪个。
+
+切模式只要在服务停掉后跑一次，SQLite 会把 `-wal` 里的内容 checkpoint 回主库、再删掉两个文件，数据一行不少：
+
+```
+sqlite3 data/redbook.db "PRAGMA wal_checkpoint(TRUNCATE); PRAGMA journal_mode=DELETE;"
+```
+
+> 有个坑：只 checkpoint 不切模式没用，下次启动又会重新生成那两个文件——因为 `server.cpp` 的 `ensureSchema()` 里写死了 `PRAGMA journal_mode=WAL`。那行已经一并改成 `DELETE` 了。
+
+对应代码（`server.cpp`）：
+
+```cpp
+DB_PATH = DATA_DIR + "/redbook.db";
+sqlite3_open(DB_PATH.c_str(), &g_db);
+dbExec("PRAGMA journal_mode=DELETE;");   // 单文件模式，不产生 -wal / -shm
+```
+
+所以**备份就是拷 `data/redbook.db` 一个文件**，没有“只拷主库会丢最新数据”这回事了。`-journal` 是事务期间的临时文件，提交后自动删除，也不用管（`.gitignore` 里顺手忽略了 `*.db-journal`）。
+
+### 四张表
+
+对应原来的四个 txt：
 
 | 原文件 | 表 | 字段 |
 |---|---|---|
@@ -90,6 +119,17 @@ const API = (!IN_APP && /^https?:$/.test(location.protocol)) ? 'api' : null;
 | `follows.txt` | `follows` | user_phone / follow_phone / follow_name |
 
 另外建了两个索引：`idx_comments_post ON comments(post_id)`、`idx_posts_time ON posts(time)`。
+
+**现在库里装了什么**（2026-10-20 统计，都是测试时随手发的）：
+
+| 表 | 行数 | 说明 |
+|---|---|---|
+| `users` | 17 | 其中 4 个已注销（`deleted=1`，数据留档，手机号可重新注册） |
+| `posts` | 27 | 其中 11 条已删（软删除，`/api/state` 不再返回） |
+| `comments` | 70 | 其中 3 条已删；`parent_id` 非空的就是「回复的回复」 |
+| `follows` | 26 | 取关是**真删行**（`DELETE FROM follows`），所以这张表没有 `deleted` 列 |
+
+一句话概括各表职责：`users` 是账号（手机号当主键），`posts` 是动态正文，`comments` 用 `post_id` 挂在动态下、用 `parent_id` 串回复链，`follows` 是两个手机号组成的关注关系（复合主键，重复关注会被 `INSERT OR IGNORE` 挡掉）。
 
 两处和原程序不同的地方，都是刻意改的：
 
@@ -168,6 +208,7 @@ App 通过 `WebViewAssetLoader` 以 `https://appassets.androidplatform.net` 虚�
 ## 已知问题 / 待办
 
 - [ ] 网页端与 App 端数据不同步
+- [x] ~~`data/redbook.db-wal` / `data/redbook.db-shm` 被 git 跟踪~~ —— 已切回 `DELETE` 日志模式，两个文件不存在了，并且已 `git rm --cached` + 写进 `.gitignore`
 - [ ] `android-app/app/build.gradle` 里 `versionName` 目前是调试残留值（`"1.我已经半分钟没有更新了"`），发布前要改回正常版本号
 - [ ] release 包用的是 debug 签名，正式发布需要换成自己的签名
 
@@ -175,13 +216,9 @@ App 通过 `WebViewAssetLoader` 以 `https://appassets.androidplatform.net` 虚�
 
 ## 桌面快捷方式（带图标）
 
-`启动后端.bat` 本身是批处理，Windows 只给它默认图标。想要自定义图标，用真正的快捷方式（`.lnk`），**不要用符号链接**——符号链接的图标跟着目标文件走，改不了。
-
 在 PowerShell 里执行（会先删掉旧的符号链接）：
 
 ```powershell
-Remove-Item "C:\Users\HUAWEI\Desktop\单机版小红书" -Force -ErrorAction SilentlyContinue
-
 $sh = New-Object -ComObject WScript.Shell
 $lnk = $sh.CreateShortcut("C:\Users\HUAWEI\Desktop\单机版小红书.lnk")
 $lnk.TargetPath       = "D:\2025\FirstGit-cpp\redbook\启动后端.bat"

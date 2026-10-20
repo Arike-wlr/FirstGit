@@ -2,6 +2,11 @@
 *.o
 sqlite.zip
 sqlite-amalgamation-*/
+
+# SQLite 运行时临时文件，随数据库打开自动生成，不该进版本库
+data/*.db-wal
+data/*.db-shm
+data/*.db-journal
 android-app/.gradle/
 android-app/build/
 android-app/app/build/
