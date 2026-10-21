@@ -16,7 +16,6 @@
 #include <ws2tcpip.h>
 #include <windows.h>
 
-#include <algorithm>
 #include <cctype>
 #include <cstdio>
 #include <cstring>
@@ -40,65 +39,12 @@ static string DB_PATH  = "data/redbook.db";
 static sqlite3* g_db = nullptr;
 static const int MAX_BODY = 1 << 20;
 
-// ---------------- 编码（读老 txt 用） ----------------
-static string gbkToUtf8(const string& in) {
-    if (in.empty()) return in;
-    int n = MultiByteToWideChar(936, 0, in.c_str(), (int)in.size(), nullptr, 0);
-    if (n <= 0) return in;
-    wstring w(n, 0);
-    MultiByteToWideChar(936, 0, in.c_str(), (int)in.size(), &w[0], n);
-    int m = WideCharToMultiByte(CP_UTF8, 0, w.c_str(), (int)w.size(), nullptr, 0, nullptr, nullptr);
-    string o(m, 0);
-    WideCharToMultiByte(CP_UTF8, 0, w.c_str(), (int)w.size(), &o[0], m, nullptr, nullptr);
-    return o;
-}
-static bool isValidUtf8(const string& s) {
-    size_t i = 0, n = s.size();
-    while (i < n) {
-        unsigned char c = (unsigned char)s[i];
-        int len;
-        if (c < 0x80) { i++; continue; }
-        else if ((c & 0xE0) == 0xC0) { if (c < 0xC2) return false; len = 2; }
-        else if ((c & 0xF0) == 0xE0) { len = 3; }
-        else if ((c & 0xF8) == 0xF0) { if (c > 0xF4) return false; len = 4; }
-        else return false;
-        if (i + (size_t)len > n) return false;
-        for (int k = 1; k < len; k++)
-            if (((unsigned char)s[i + k] & 0xC0) != 0x80) return false;
-        i += (size_t)len;
-    }
-    return true;
-}
-static string readFileUtf8(const string& path) {
-    ifstream f(path.c_str(), ios::binary);
-    if (!f) return "";
-    string raw((istreambuf_iterator<char>(f)), istreambuf_iterator<char>());
-    if (raw.size() >= 3 && (unsigned char)raw[0] == 0xEF &&
-        (unsigned char)raw[1] == 0xBB && (unsigned char)raw[2] == 0xBF)
-        raw.erase(0, 3);                       // 去 BOM
-    if (isValidUtf8(raw)) return raw;          // 新版 txt：UTF-8
-    return gbkToUtf8(raw);                     // 老版 txt：GBK
-}
-
 // ---------------- 小工具 ----------------
 static string trim(const string& s) {
     size_t a = 0, b = s.size();
     while (a < b && isspace((unsigned char)s[a])) a++;
     while (b > a && isspace((unsigned char)s[b - 1])) b--;
     return s.substr(a, b - a);
-}
-static vector<string> splitLines(const string& s) {
-    vector<string> out;
-    size_t i = 0;
-    while (i <= s.size()) {
-        size_t j = s.find('\n', i);
-        string line = (j == string::npos) ? s.substr(i) : s.substr(i, j - i);
-        if (!line.empty() && line.back() == '\r') line.pop_back();
-        out.push_back(line);
-        if (j == string::npos) break;
-        i = j + 1;
-    }
-    return out;
 }
 static string jesc(const string& s) {
     string o;
@@ -149,30 +95,6 @@ static string jget(const string& body, const string& key) {
 }
 
 // ---------------- 时间 ----------------
-static string isoFromCtime(const string& raw) {
-    char wd[16] = {0}, mon[8] = {0};
-    int d = 0, h = 0, mi = 0, s = 0, y = 0;
-    if (sscanf(raw.c_str(), "%15s %7s %d %d:%d:%d %d", wd, mon, &d, &h, &mi, &s, &y) < 7) return "";
-    static const char* M[] = {"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"};
-    int m = 1;
-    for (int i = 0; i < 12; i++) if (_strnicmp(mon, M[i], 3) == 0) m = i + 1;
-    char buf[40];
-    snprintf(buf, sizeof buf, "%04d-%02d-%02dT%02d:%02d:%02d", y, m, d, h, mi, s);
-    return buf;
-}
-static time_t isoToTime(const string& iso) {
-    if (iso.size() < 19) return 0;
-    struct tm t;
-    memset(&t, 0, sizeof t);
-    t.tm_year = atoi(iso.substr(0, 4).c_str()) - 1900;
-    t.tm_mon  = atoi(iso.substr(5, 2).c_str()) - 1;
-    t.tm_mday = atoi(iso.substr(8, 2).c_str());
-    t.tm_hour = atoi(iso.substr(11, 2).c_str());
-    t.tm_min  = atoi(iso.substr(14, 2).c_str());
-    t.tm_sec  = atoi(iso.substr(17, 2).c_str());
-    t.tm_isdst = -1;
-    return mktime(&t);
-}
 static string fmtIso(time_t t) {
     struct tm tmv;
     localtime_s(&tmv, &t);
@@ -181,11 +103,6 @@ static string fmtIso(time_t t) {
     return buf;
 }
 static string nowIso() { return fmtIso(time(nullptr)); }
-static string isoAdd(const string& iso, int minutes) {
-    time_t t = isoToTime(iso);
-    if (!t) return iso;
-    return fmtIso(t + (time_t)minutes * 60);
-}
 
 // ---------------- SQLite 薄封装 ----------------
 struct Stmt {
@@ -273,32 +190,6 @@ static void ensureSchema() {
     }
     if (!hasUserDeleted) dbExec("ALTER TABLE users ADD COLUMN deleted INTEGER NOT NULL DEFAULT 0;");
 }
-
-// 把 "评论正文博主回复：回复1博主回复：回复2" 拆开
-static void splitReplies(const string& raw, string& main, vector<string>& replies) {
-    string t = raw;
-    // 老数据里可能写成 "   //博主回复："
-    size_t pos = 0;
-    while ((pos = t.find("//博主回复", pos)) != string::npos) t.erase(pos, 2);
-    const string KEY = "博主回复：";
-    main = t;
-    size_t p = t.find(KEY);
-    if (p == string::npos) { main = trim(t); return; }
-    main = trim(t.substr(0, p));
-    size_t cur = p + KEY.size();
-    while (true) {
-        size_t next = t.find(KEY, cur);
-        string part = trim(t.substr(cur, next == string::npos ? string::npos : next - cur));
-        if (!part.empty()) replies.push_back(part);
-        if (next == string::npos) break;
-        cur = next + KEY.size();
-    }
-    if (main.empty() && !replies.empty()) { main = replies.front(); replies.erase(replies.begin()); }
-}
-
-
-// comments.txt 里那一列存的是「帖子作者」，不是评论者；
-// 用昵称反查 users 表，把 phone 修正成评论者本人（幂等，每次启动跑一遍）
 
 // ---------------- 校验 ----------------
 static bool validPhone(const string& p) {

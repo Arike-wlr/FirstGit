@@ -172,7 +172,17 @@ dbExec("PRAGMA journal_mode=DELETE;");   // 单文件模式，不产生 -wal / -
 
 ### 后端（MinGW / MSYS2）
 
-`sqlite3.o` 已经编好了，直接链接即可：
+根目录带 `Makefile`，PowerShell、cmd、Git Bash、MSYS2 里都能直接 `make`（会自动适配 cmd 的 `del` 与 sh 的 `rm`）：
+
+```
+make            # 编译 server.exe（增量：sqlite3.o 只在 sqlite3.c 变过时才重编）
+make run        # 编译并启动，默认 http://localhost:8787
+make rebuild    # 全量重编（≈1 分钟，主要花在 sqlite3.c）
+make clean      # 删掉 *.o / *.d / server.exe
+make help       # 列出全部目标
+```
+
+也可以手动编译。`sqlite3.o` 已经编好了，直接链接即可：
 
 ```
 g++ -O2 -std=c++17 server.cpp sqlite3.o -o server.exe -lws2_32

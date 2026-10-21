@@ -1,5 +1,6 @@
 *.exe
 *.o
+*.d
 sqlite.zip
 sqlite-amalgamation-*/
 
